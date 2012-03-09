@@ -1,0 +1,14 @@
+package spullara.util.concurrent;
+
+public class Tuple2<T, V> {
+    private final T t;
+    private final V v;
+
+    public Tuple2(T t, V v) {
+	this.t = t;
+	this.v = v;
+    }
+
+    public T _1() { return t; }
+    public V _2() { return v; }
+}
