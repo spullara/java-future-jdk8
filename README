@@ -1,0 +1,8 @@
+You can read about the theory of this code from the Twitter Scala School:
+
+http://twitter.github.com/scala_school/finagle.html
+
+This style encourages callbacks rather than blocking and makes it much easier
+to write multi-threaded code without context switching for non-blocking
+code. JDK 8 makes the style readable in Java by introducing lambdas into
+the language.
