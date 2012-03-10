@@ -107,7 +107,7 @@ public class Promise<T> {
 		if (throwable != null) {
 		    block.apply(throwable);
 		}
-	    } else if (success == null) {
+	    } else if (failed == null) {
 		failed = block;
 	    } else {
 		failed = Blocks.chain(failed, block);
@@ -144,6 +144,8 @@ public class Promise<T> {
 		    promise.set(new Tuple2<>((T) ref.get(), value));
 		}
 	    });
+	addFailure(e -> promise.setException(e));
+	promiseB.addFailure(e -> promise.setException(e));
 	return promise;
     }
 

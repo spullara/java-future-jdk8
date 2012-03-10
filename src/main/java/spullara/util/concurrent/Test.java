@@ -24,6 +24,14 @@ public class Test {
 	try {
 	    promise4.get();
 	} catch (ExecutionException e) {
+	    System.out.print("Get exception: ");
+	    e.getCause().printStackTrace();
+	}
+
+	try {
+	    promise4.join(promise).get();
+	} catch (ExecutionException e) {
+	    System.out.print("Join exception: ");
 	    e.getCause().printStackTrace();
 	}
 
