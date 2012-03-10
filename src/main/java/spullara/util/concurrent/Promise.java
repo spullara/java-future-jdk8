@@ -173,4 +173,17 @@ public class Promise<T> {
 	addFailure(block);
 	return this;
     }
+
+    public Promise<T> ensure(Runnable runnable) {
+	addSuccess(v -> runnable.run());
+	addFailure(e -> runnable.run());
+	return this;
+    }
+    
+    public Promise<T> rescue(Mapper<Throwable, T> mapper) {
+	Promise<T> promise = new Promise<>();
+        addSuccess(v -> promise.set(v));
+	addFailure(e -> promise.set(mapper.map(e)));
+	return promise;
+    }
 }

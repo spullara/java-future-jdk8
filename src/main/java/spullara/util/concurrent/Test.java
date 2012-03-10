@@ -27,8 +27,10 @@ public class Test {
 	    e.getCause().printStackTrace();
 	}
 
-	promise.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v));
-	promise4.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v));
+	promise.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v)).ensure(() -> System.out.println("Ensured"));
+	promise4.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v)).ensure(() -> System.out.println("Ensured"));
+
+	promise4.rescue(e -> "Rescued!").map(v -> System.out.println(v));
 
 	promise.foreach(v -> System.out.println("Foreach: " + v));
 	es.shutdown();
