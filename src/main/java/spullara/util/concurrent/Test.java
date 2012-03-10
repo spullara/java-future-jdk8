@@ -1,46 +1,52 @@
 package spullara.util.concurrent;
 
+import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.concurrent.*;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-	Promise<String> promise = new Promise<>();
-	Promise<String> promise2 = new Promise<>();
-	Promise<String> promise3 = new Promise<>("Constant");
-	Promise<String> promise4 = new Promise<>(new RuntimeException());
-
+	PrintStream p = System.out;
 	ExecutorService es = Executors.newCachedThreadPool();
-	es.submit(() -> { Thread.sleep(1000); promise.set("Done."); });
-	es.submit(() -> { Thread.sleep(900); promise2.set("Done2."); });
+	Promise<String> promise = Promises.execute(es, () -> { Thread.sleep(1000); return "Done."; });
+	Promise<String> promise2 = Promises.execute(es, () -> { Thread.sleep(900); return "Done2."; });
+	Promise<String> promise3 = new Promise<>("Constant");
+	Promise<String> promise4 = Promises.execute(es, () -> { throw new RuntimeException("Promise4"); });
 
-	promise.map(v -> { System.out.println("Set1: " + v); return "Really Done."; }).map(v -> System.out.println("Set2: " + v));
-	promise.join(promise2).map( value -> System.out.println(value._1 + ", " + value._2) );
-	promise2.flatMap(v -> promise3).map(v -> System.out.println("Flatmapped: " + v));
-	promise.select(promise2).foreach(v -> System.out.println("Selected: " + v));
-	promise2.select(promise).foreach(v -> System.out.println("Selected: " + v));
+	promise.map(v -> { p.println("Set1: " + v); return "Really Done."; }).map(v -> p.println("Set2: " + v));
+	promise.join(promise2).map( value -> p.println(value._1 + ", " + value._2) );
+	promise2.flatMap(v -> promise3).map(v -> p.println("Flatmapped: " + v));
+	promise.select(promise2).foreach(v -> p.println("Selected: " + v));
+	promise2.select(promise).foreach(v -> p.println("Selected: " + v));
 
-	System.out.println("Waited for this one: " + promise.get(1, TimeUnit.DAYS));
+	p.println("Waited for this one: " + promise.get(1, TimeUnit.DAYS));
 
 	try {
 	    promise4.get();
 	} catch (ExecutionException e) {
-	    System.out.print("Get exception: ");
-	    e.getCause().printStackTrace();
+	    p.println("Get exception: " + e.getCause());
 	}
 
 	try {
 	    promise4.join(promise).get();
 	} catch (ExecutionException e) {
-	    System.out.print("Join exception: ");
-	    e.getCause().printStackTrace();
+	    p.println("Join exception: " + e.getCause());
 	}
 
-	promise.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v)).ensure(() -> System.out.println("Ensured"));
-	promise4.onSuccess( v -> System.out.println("onSuccess: " + v)).onFailure( v -> System.out.println("onFailure: " + v)).ensure(() -> System.out.println("Ensured"));
+	promise.onSuccess( v -> p.println("onSuccess: " + v)).onFailure( v -> p.println("onFailure: " + v)).ensure(() -> p.println("Ensured"));
+	promise4.onSuccess( v -> p.println("onSuccess: " + v)).onFailure( v -> p.println("onFailure: " + v)).ensure(() -> p.println("Ensured"));
 
-	promise4.rescue(e -> "Rescued!").map(v -> System.out.println(v));
+	promise4.rescue(e -> "Rescued!").map(v -> p.println(v));
 
-	promise.foreach(v -> System.out.println("Foreach: " + v));
+	Promises.collect(Arrays.asList(promise, promise2, promise3)).map ( list -> {
+		p.print("Collected: ");
+		for (String s : list) {
+		    p.print(s + " ");
+		}
+		p.println();
+	    });
+
+	promise.foreach(v -> p.println("Foreach: " + v));
 	es.shutdown();
     }
 }

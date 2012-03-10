@@ -188,4 +188,5 @@ public class Promise<T> {
 	addFailure(e -> promise.set(mapper.map(e)));
 	return promise;
     }
+
 }
