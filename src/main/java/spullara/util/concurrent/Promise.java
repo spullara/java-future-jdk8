@@ -9,6 +9,16 @@ import java.util.functions.*;
  * future will get the result.
  */
 public class Promise<T> {
+
+    public Promise() {}
+
+    public Promise(T t) {
+	set(t);
+    }
+    
+    public Promise(Throwable t) {
+	setException(t);
+    }
     
     // The setters use this to decide who wins
     private Semaphore set = new Semaphore(1);
@@ -90,6 +100,12 @@ public class Promise<T> {
     public <V> Promise<V> map(Mapper<T, V> mapper) {
 	Promise<V> promise = new Promise<V>();
 	addSuccess(value -> promise.set(mapper.map(value)));
+	return promise;
+    }
+
+    public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
+	Promise<V> promise = new Promise<V>();
+	addSuccess(value1 -> mapper.map(value1).addSuccess(value2 -> promise.set(value2)));
 	return promise;
     }
 
