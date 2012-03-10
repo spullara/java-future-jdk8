@@ -129,7 +129,12 @@ public class Promise<T> {
 
     public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
 	Promise<V> promise = new Promise<V>();
-	addSuccess(value1 -> mapper.map(value1).addSuccess(value2 -> promise.set(value2)));
+	addSuccess(value -> {
+		Promise<V> mapped = mapper.map(value);
+		mapped.addSuccess(v -> promise.set(v));
+		mapped.addFailure(e -> promise.setException(e));
+	    });
+	addFailure(e -> promise.setException(e));
 	return promise;
     }
 

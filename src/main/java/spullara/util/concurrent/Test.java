@@ -14,8 +14,13 @@ public class Test {
 	Promise<String> promise4 = Promises.execute(es, () -> { throw new RuntimeException("Promise4"); });
 
 	promise.map(v -> { p.println("Set1: " + v); return "Really Done."; }).map(v -> p.println("Set2: " + v));
+
 	promise.join(promise2).map( value -> p.println(value._1 + ", " + value._2) );
+
 	promise2.flatMap(v -> promise3).map(v -> p.println("Flatmapped: " + v));
+	promise2.flatMap(v -> promise4).onFailure(e -> p.println("Flat map failed: " + e));
+	promise4.flatMap(v -> promise2).onFailure(e -> p.println("Flat map failed: " + e));
+
 	promise.select(promise2).foreach(v -> p.println("Selected: " + v));
 	promise2.select(promise).foreach(v -> p.println("Selected: " + v));
 
