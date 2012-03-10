@@ -1,10 +1,7 @@
 package spullara.util.concurrent;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import java.util.functions.*;
 
 /**
@@ -71,16 +68,44 @@ public class Promise<T> {
 	}
     }
 
-    public <V> Promise<V> map(Mapper<T, V> mapper) {
-	Promise<V> promise = new Promise<V>();
-	Block<T> mapBlock = value -> promise.set(mapper.map(value));
+    private void addSuccess(Block<T> block) {
 	synchronized (this) {
-	    if (success == null) {
-		success = mapBlock;
+	    if (read.getCount() == 0) {
+		if (value != null) {
+		    block.apply(value);
+		}
+	    } else if (success == null) {
+		success = block;
 	    } else {
-		success = Blocks.chain(success, mapBlock);
+		success = Blocks.chain(success, block);
 	    } 
 	}
+    }
+
+
+    /**
+     * New Future API section.
+     */
+
+    public <V> Promise<V> map(Mapper<T, V> mapper) {
+	Promise<V> promise = new Promise<V>();
+	addSuccess(value -> promise.set(mapper.map(value)));
+	return promise;
+    }
+
+    public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
+	Promise<Tuple2<T,B>> promise = new Promise<>();
+	AtomicReference ref = new AtomicReference();
+	addSuccess(value -> {
+		if (!ref.weakCompareAndSet(null, value)) {
+		    promise.set(new Tuple2<>(value, (B) ref.get()));
+		}
+	    });
+	promiseB.addSuccess(value -> {
+		if (!ref.weakCompareAndSet(null, value)) {
+		    promise.set(new Tuple2<>((T) ref.get(), value));
+		}
+	    });
 	return promise;
     }
 }
