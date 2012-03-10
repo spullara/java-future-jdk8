@@ -5,8 +5,10 @@ import java.util.concurrent.atomic.*;
 import java.util.functions.*;
 
 /**
- * A promise can be set from a separate thread and listeners and waiters on the
- * future will get the result.
+ * You can use a Promise like an asychronous callback or you can block
+ * on it like you would a Future.
+ *
+ * Loosely based on: http://twitter.github.com/scala_school/finagle.html
  */
 public class Promise<T> {
 
@@ -116,7 +118,7 @@ public class Promise<T> {
     }
 
     /**
-     * New Future API section.
+     * Promise asynchronous API section.
      */
 
     public <V> Promise<V> map(Mapper<T, V> mapper) {

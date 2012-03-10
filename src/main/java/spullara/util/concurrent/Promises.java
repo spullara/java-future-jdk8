@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 public class Promises {
+
     public static <T> Promise<T> execute(ExecutorService es, Callable<T> callable) {
 	Promise<T> promise = new Promise<>();
 	es.submit(() -> {
