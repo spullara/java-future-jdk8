@@ -66,6 +66,15 @@ public class Promise<T> {
     private Block<Throwable> failed;
     private Block<T> success;
 
+    public T get() throws InterruptedException, ExecutionException {
+	read.await();
+	if (throwable == null) {
+	    return value;
+	} else {
+	    throw new ExecutionException(throwable);
+	}
+    }
+
     public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
 	if (read.await(timeout, timeUnit)) {
 	    if (throwable == null) {
@@ -92,6 +101,19 @@ public class Promise<T> {
 	}
     }
 
+    private void addFailure(Block<Throwable> block) {
+	synchronized (this) {
+	    if (read.getCount() == 0) {
+		if (throwable != null) {
+		    block.apply(throwable);
+		}
+	    } else if (success == null) {
+		failed = block;
+	    } else {
+		failed = Blocks.chain(failed, block);
+	    } 
+	}
+    }
 
     /**
      * New Future API section.
@@ -123,5 +145,32 @@ public class Promise<T> {
 		}
 	    });
 	return promise;
+    }
+
+    public Promise<T> select(Promise<T> promiseB) {
+	Promise<T> promise = new Promise<>();
+	AtomicBoolean done = new AtomicBoolean();
+	Block<T> block = value -> {
+	    if (done.compareAndSet(false, true)) {
+		promise.set(value);
+	    }
+	};
+	addSuccess(block);
+	promiseB.addSuccess(block);
+	return promise;
+    }
+
+    public void foreach(Block<T> block) {
+	addSuccess(block);
+    }
+
+    public Promise<T> onSuccess(Block<T> block) {
+	addSuccess(block);
+	return this;
+    }
+
+    public Promise<T> onFailure(Block<Throwable> block) {
+	addFailure(block);
+	return this;
     }
 }
