@@ -1,5 +1,8 @@
 package spullara.util.concurrent;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -69,6 +72,8 @@ public class Promise<T> {
         }
     }
 
+    private Set<Promise> linked;
+    private Block<Throwable> raise;
     private Block<Throwable> failed;
     private Block<T> success;
 
@@ -127,6 +132,7 @@ public class Promise<T> {
 
     public <V> Promise<V> map(final Mapper<T, V> mapper) {
         final Promise<V> promise = new Promise<>();
+        link(promise);
         addSuccess(new Block<T>() {
             public void apply(T value) {
                 promise.set(mapper.map(value));
@@ -135,8 +141,18 @@ public class Promise<T> {
         return promise;
     }
 
+    private <V> void link(Promise<V> promise) {
+        synchronized (this) {
+            if (linked == null) {
+                linked = new HashSet<>();
+            }
+            linked.add(promise);
+        }
+    }
+
     public <V> Promise<V> flatMap(final Mapper<T, Promise<V>> mapper) {
         final Promise<V> promise = new Promise<>();
+        link(promise);
         addSuccess(new Block<T>() {
             public void apply(T value) {
                 Promise<V> mapped = mapper.map(value);
@@ -162,6 +178,8 @@ public class Promise<T> {
 
     public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
         final Promise<Tuple2<T, B>> promise = new Promise<>();
+        link(promise);
+        promise.link(promiseB);
         final AtomicReference ref = new AtomicReference();
         addSuccess(new Block<T>() {
             @Override
@@ -196,6 +214,8 @@ public class Promise<T> {
 
     public Promise<T> select(Promise<T> promiseB) {
         final Promise<T> promise = new Promise<>();
+        link(promise);
+        promise.link(promiseB);
         final AtomicBoolean done = new AtomicBoolean();
         Block<T> block = new Block<T>() {
             @Override
@@ -224,6 +244,17 @@ public class Promise<T> {
         return this;
     }
 
+    public Promise<T> onRaise(Block<Throwable> block) {
+        synchronized (this) {
+            if (raise == null) {
+                raise = block;
+            } else {
+                raise = Blocks.chain(raise, block);
+            }
+        }
+        return this;
+    }
+
     public Promise<T> ensure(final Runnable runnable) {
         addSuccess(new Block<T>() {
             public void apply(T t) {
@@ -240,6 +271,7 @@ public class Promise<T> {
 
     public Promise<T> rescue(final Mapper<Throwable, T> mapper) {
         final Promise<T> promise = new Promise<>();
+        link(promise);
         addSuccess(new Block<T>() {
             public void apply(T t) {
                 promise.set(t);
@@ -253,4 +285,17 @@ public class Promise<T> {
         return promise;
     }
 
+    public void raise(Throwable e) {
+        synchronized (this) {
+            if (set.availablePermits() == 1) {
+                if (raise != null) {
+                    raise.apply(e);
+                }
+            }
+            for (Promise promise : linked) {
+                promise.raise(e);
+            }
+
+        }
+    }
 }

@@ -32,6 +32,24 @@ public class Test {
                 throw new RuntimeException("Promise4");
             }
         });
+        final Object object = new Object();
+        promise3.join(Promises.execute(es, new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                synchronized (object) {
+                    object.wait();
+                }
+                p.println("Interrupted");
+                return null;
+            }
+        }).onRaise(new Block<Throwable>() {
+            @Override
+            public void apply(Throwable throwable) {
+                synchronized (object) {
+                    object.notifyAll();
+                }
+            }
+        }));
 
         promise.map(new Mapper<String, String>() {
             @Override
@@ -43,6 +61,7 @@ public class Test {
             @Override
             public String map(String s) {
                 p.println("Set2: " + s);
+                promise3.raise(new CancellationException());
                 return null;
             }
         });
