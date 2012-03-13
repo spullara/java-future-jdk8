@@ -1,5 +1,7 @@
 package spullara.util.concurrent;
 
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.functions.*;
@@ -65,6 +67,8 @@ public class Promise<T> {
 	}
     }
 
+    private Set<Promise> linked;
+    private Block<Throwable> raise;
     private Block<Throwable> failed;
     private Block<T> success;
 
@@ -123,12 +127,14 @@ public class Promise<T> {
 
     public <V> Promise<V> map(Mapper<T, V> mapper) {
 	Promise<V> promise = new Promise<V>();
+	promise.link(promiseB);
 	addSuccess(value -> promise.set(mapper.map(value)));
 	return promise;
     }
 
     public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
 	Promise<V> promise = new Promise<V>();
+	link(promise);
 	addSuccess(value -> {
 		Promise<V> mapped = mapper.map(value);
 		mapped.addSuccess(v -> promise.set(v));
@@ -140,6 +146,8 @@ public class Promise<T> {
 
     public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
 	Promise<Tuple2<T,B>> promise = new Promise<>();
+	link(promise);
+	promise.link(promiseB);
 	AtomicReference ref = new AtomicReference();
 	addSuccess(value -> {
 		if (!ref.weakCompareAndSet(null, value)) {
@@ -158,6 +166,8 @@ public class Promise<T> {
 
     public Promise<T> select(Promise<T> promiseB) {
 	Promise<T> promise = new Promise<>();
+	link(promise);
+	promise.link(promiseB);
 	AtomicBoolean done = new AtomicBoolean();
 	Block<T> block = value -> {
 	    if (done.compareAndSet(false, true)) {
@@ -191,9 +201,43 @@ public class Promise<T> {
     
     public Promise<T> rescue(Mapper<Throwable, T> mapper) {
 	Promise<T> promise = new Promise<>();
+	link(promise);
         addSuccess(v -> promise.set(v));
 	addFailure(e -> promise.set(mapper.map(e)));
 	return promise;
     }
 
+    public void raise(Throwable e) {
+	synchronized (this) {
+	    if (set.availablePermits() == 1) {
+		if (raise != null) {
+		    raise.apply(e);
+		}
+	    }
+	    if (linked != null) {
+		for (Promise promise : linked) {
+		    promise.raise(e);
+		}
+	    }
+	}
+    }
+
+    public Promise<T> onRaise(Block<Throwable> block) {
+	sychronized (this) {
+	    if (raise == null) {
+		raise = block;
+	    } else {
+		raise = Blocks.chain(raise, block);
+	    }
+	}
+    }
+
+    public void link(Promise promise) {
+	synchronized (this) {
+	    if (linked == null) {
+		linked = new HashSet<>();
+	    }
+	    linked.add(promise);
+	}
+    }
 }

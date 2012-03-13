@@ -13,7 +13,14 @@ public class Test {
 	Promise<String> promise3 = new Promise<>("Constant");
 	Promise<String> promise4 = Promises.execute(es, () -> { throw new RuntimeException("Promise4"); });
 
-	promise.map(v -> { p.println("Set1: " + v); return "Really Done."; }).map(v -> p.println("Set2: " + v));
+	final Object monitor = new Object();
+	promise3.join(Promises.execute(es, () -> { synchronized (monitor) { monitor.wait(); } p.println("Interrupted"); })
+		      .onRaise(e -> synchronized(monitor) { monitor.notifyAll(); }));
+	promise.map(v -> { 
+		p.println("Set1: " + v); 
+		promise3.raise(new CancellationException());
+		return "Really Done."; 
+	    }).map(v -> p.println("Set2: " + v));
 
 	promise.join(promise2).map( value -> p.println(value._1 + ", " + value._2) );
 
