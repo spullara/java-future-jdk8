@@ -15,7 +15,7 @@ public class Test {
 
 	final Object monitor = new Object();
 	promise3.join(Promises.execute(es, () -> { synchronized (monitor) { monitor.wait(); } p.println("Interrupted"); })
-		      .onRaise(e -> synchronized(monitor) { monitor.notifyAll(); }));
+		      .onRaise(e -> { synchronized(monitor) { monitor.notifyAll(); } }));
 	promise.map(v -> { 
 		p.println("Set1: " + v); 
 		promise3.raise(new CancellationException());

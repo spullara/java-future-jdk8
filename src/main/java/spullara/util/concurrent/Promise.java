@@ -127,7 +127,7 @@ public class Promise<T> {
 
     public <V> Promise<V> map(Mapper<T, V> mapper) {
 	Promise<V> promise = new Promise<V>();
-	promise.link(promiseB);
+	link(promise);
 	addSuccess(value -> promise.set(mapper.map(value)));
 	return promise;
     }
@@ -223,13 +223,14 @@ public class Promise<T> {
     }
 
     public Promise<T> onRaise(Block<Throwable> block) {
-	sychronized (this) {
+	synchronized (this) {
 	    if (raise == null) {
 		raise = block;
 	    } else {
 		raise = Blocks.chain(raise, block);
 	    }
 	}
+	return this;
     }
 
     public void link(Promise promise) {
