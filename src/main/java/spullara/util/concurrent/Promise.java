@@ -1,244 +1,250 @@
 package spullara.util.concurrent;
 
-import java.util.Set;
 import java.util.HashSet;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.functions.*;
 
 /**
  * You can use a Promise like an asychronous callback or you can block
  * on it like you would a Future.
- *
+ * <p/>
  * Loosely based on: http://twitter.github.com/scala_school/finagle.html
  */
 public class Promise<T> {
 
-    public Promise() {}
+  public Promise() {
+  }
 
-    public Promise(T t) {
-	set(t);
+  public Promise(T t) {
+    set(t);
+  }
+
+  public Promise(Throwable t) {
+    setException(t);
+  }
+
+  // The setters use this to decide who wins
+  private Semaphore set = new Semaphore(1);
+
+  // The readers use this to wait for it to set
+  private CountDownLatch read = new CountDownLatch(1);
+
+  private T value;
+  private Throwable throwable;
+
+  public void set(T value) {
+    if (set.tryAcquire()) {
+      this.value = value;
+      read.countDown();
+      Block<T> localSuccess = null;
+      synchronized (this) {
+        if (success != null) {
+          localSuccess = success;
+          success = null;
+        }
+      }
+      if (localSuccess != null) {
+        localSuccess.apply(value);
+      }
     }
-    
-    public Promise(Throwable t) {
-	setException(t);
+  }
+
+  public void setException(Throwable throwable) {
+    if (set.tryAcquire()) {
+      this.throwable = throwable;
+      read.countDown();
+      Block<Throwable> localFailed = null;
+      synchronized (this) {
+        if (failed != null) {
+          localFailed = failed;
+          failed = null;
+        }
+      }
+      if (localFailed != null) {
+        localFailed.apply(throwable);
+      }
     }
-    
-    // The setters use this to decide who wins
-    private Semaphore set = new Semaphore(1);
+  }
 
-    // The readers use this to wait for it to set
-    private CountDownLatch read = new CountDownLatch(1);
+  private Set<Promise> linked;
+  private Block<Throwable> raise;
+  private Block<Throwable> failed;
+  private Block<T> success;
 
-    private T value;
-    private Throwable throwable;
-
-    public void set(T value) {
-	if (set.tryAcquire()) {
-	    this.value = value;
-	    read.countDown();
-	    Block<T> localSuccess = null;
-	    synchronized (this) {
-		if (success != null) {
-		    localSuccess = success;
-		    success = null;
-		}
-	    }
-	    if (localSuccess != null) {
-		localSuccess.apply(value);
-	    }
-	}
+  public T get() throws InterruptedException, ExecutionException {
+    read.await();
+    if (throwable == null) {
+      return value;
+    } else {
+      throw new ExecutionException(throwable);
     }
+  }
 
-    public void setException(Throwable throwable) {
-	if (set.tryAcquire()) {
-	    this.throwable = throwable;
-	    read.countDown();
-	    Block<Throwable> localFailed = null;
-	    synchronized (this) {
-		if (failed != null) {
-		    localFailed = failed;
-		    failed = null;
-		}
-	    }
-	    if (localFailed != null) {
-		localFailed.apply(throwable);
-	    }
-	}
+  public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+    if (read.await(timeout, timeUnit)) {
+      if (throwable == null) {
+        return value;
+      } else {
+        throw new ExecutionException(throwable);
+      }
+    } else {
+      throw new TimeoutException();
     }
+  }
 
-    private Set<Promise> linked;
-    private Block<Throwable> raise;
-    private Block<Throwable> failed;
-    private Block<T> success;
-
-    public T get() throws InterruptedException, ExecutionException {
-	read.await();
-	if (throwable == null) {
-	    return value;
-	} else {
-	    throw new ExecutionException(throwable);
-	}
+  private void addSuccess(Block<T> block) {
+    synchronized (this) {
+      if (read.getCount() == 0) {
+        if (value != null) {
+          block.apply(value);
+        }
+      } else if (success == null) {
+        success = block;
+      } else {
+        success = Blocks.chain(success, block);
+      }
     }
+  }
 
-    public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
-	if (read.await(timeout, timeUnit)) {
-	    if (throwable == null) {
-		return value;
-	    } else {
-		throw new ExecutionException(throwable);
-	    }
-	} else {
-	    throw new TimeoutException();
-	}
+  private void addFailure(Block<Throwable> block) {
+    synchronized (this) {
+      if (read.getCount() == 0) {
+        if (throwable != null) {
+          block.apply(throwable);
+        }
+      } else if (failed == null) {
+        failed = block;
+      } else {
+        failed = Blocks.chain(failed, block);
+      }
     }
+  }
 
-    private void addSuccess(Block<T> block) {
-	synchronized (this) {
-	    if (read.getCount() == 0) {
-		if (value != null) {
-		    block.apply(value);
-		}
-	    } else if (success == null) {
-		success = block;
-	    } else {
-		success = Blocks.chain(success, block);
-	    } 
-	}
-    }
+  /**
+   * Promise asynchronous API section.
+   */
 
-    private void addFailure(Block<Throwable> block) {
-	synchronized (this) {
-	    if (read.getCount() == 0) {
-		if (throwable != null) {
-		    block.apply(throwable);
-		}
-	    } else if (failed == null) {
-		failed = block;
-	    } else {
-		failed = Blocks.chain(failed, block);
-	    } 
-	}
-    }
+  public <V> Promise<V> map(Mapper<T, V> mapper) {
+    Promise<V> promise = new Promise<V>();
+    link(promise);
+    addSuccess(value -> promise.set(mapper.map(value)));
+    return promise;
+  }
 
-    /**
-     * Promise asynchronous API section.
-     */
+  public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
+    Promise<V> promise = new Promise<V>();
+    link(promise);
+    addSuccess(value -> {
+            Promise < V > mapped = mapper.map(value);
+            mapped.addSuccess(v -> promise.set(v));
+            mapped.addFailure(e -> promise.setException(e));
+    });
+    addFailure(e -> promise.setException(e));
+    return promise;
+  }
 
-    public <V> Promise<V> map(Mapper<T, V> mapper) {
-	Promise<V> promise = new Promise<V>();
-	link(promise);
-	addSuccess(value -> promise.set(mapper.map(value)));
-	return promise;
-    }
+  public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
+    Promise<Tuple2<T, B>> promise = new Promise<>();
+    link(promise);
+    promise.link(promiseB);
+    AtomicReference ref = new AtomicReference();
+    addSuccess(value -> {
+      if (!ref.weakCompareAndSet(null, value)) {
+        promise.set(new Tuple2<>(value, (B) ref.get()));
+      }
+    });
+    promiseB.addSuccess(value -> {
+      if (!ref.weakCompareAndSet(null, value)) {
+        promise.set(new Tuple2<>((T) ref.get(), value));
+      }
+    });
+    addFailure(e -> promise.setException(e));
+    promiseB.addFailure(e -> promise.setException(e));
+    return promise;
+  }
 
-    public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
-	Promise<V> promise = new Promise<V>();
-	link(promise);
-	addSuccess(value -> {
-		Promise<V> mapped = mapper.map(value);
-		mapped.addSuccess(v -> promise.set(v));
-		mapped.addFailure(e -> promise.setException(e));
-	    });
-	addFailure(e -> promise.setException(e));
-	return promise;
+  public Promise<T> select(Promise<T> promiseB) {
+    Promise<T> promise = new Promise<>();
+    link(promise);
+    promise.link(promiseB);
+    AtomicBoolean done = new AtomicBoolean();
+    Block<T> block = value -> {
+    if (done.compareAndSet(false, true)) {
+      promise.set(value);
     }
+    };
+    addSuccess(block);
+    promiseB.addSuccess(block);
+    return promise;
+  }
 
-    public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
-	Promise<Tuple2<T,B>> promise = new Promise<>();
-	link(promise);
-	promise.link(promiseB);
-	AtomicReference ref = new AtomicReference();
-	addSuccess(value -> {
-		if (!ref.weakCompareAndSet(null, value)) {
-		    promise.set(new Tuple2<>(value, (B) ref.get()));
-		}
-	    });
-	promiseB.addSuccess(value -> {
-		if (!ref.weakCompareAndSet(null, value)) {
-		    promise.set(new Tuple2<>((T) ref.get(), value));
-		}
-	    });
-	addFailure(e -> promise.setException(e));
-	promiseB.addFailure(e -> promise.setException(e));
-	return promise;
-    }
+  public void foreach(Block<T> block) {
+    addSuccess(block);
+  }
 
-    public Promise<T> select(Promise<T> promiseB) {
-	Promise<T> promise = new Promise<>();
-	link(promise);
-	promise.link(promiseB);
-	AtomicBoolean done = new AtomicBoolean();
-	Block<T> block = value -> {
-	    if (done.compareAndSet(false, true)) {
-		promise.set(value);
-	    }
-	};
-	addSuccess(block);
-	promiseB.addSuccess(block);
-	return promise;
-    }
+  public Promise<T> onSuccess(Block<T> block) {
+    addSuccess(block);
+    return this;
+  }
 
-    public void foreach(Block<T> block) {
-	addSuccess(block);
-    }
+  public Promise<T> onFailure(Block<Throwable> block) {
+    addFailure(block);
+    return this;
+  }
 
-    public Promise<T> onSuccess(Block<T> block) {
-	addSuccess(block);
-	return this;
-    }
+  public Promise<T> ensure(Runnable runnable) {
+    addSuccess(v -> runnable.run());
+    addFailure(e -> runnable.run());
+    return this;
+  }
 
-    public Promise<T> onFailure(Block<Throwable> block) {
-	addFailure(block);
-	return this;
-    }
+  public Promise<T> rescue(Mapper<Throwable, T> mapper) {
+    Promise<T> promise = new Promise<>();
+    link(promise);
+    addSuccess(v -> promise.set(v));
+    addFailure(e -> promise.set(mapper.map(e)));
+    return promise;
+  }
 
-    public Promise<T> ensure(Runnable runnable) {
-	addSuccess(v -> runnable.run());
-	addFailure(e -> runnable.run());
-	return this;
+  public void raise(Throwable e) {
+    synchronized (this) {
+      if (set.availablePermits() == 1) {
+        if (raise != null) {
+          raise.apply(e);
+        }
+      }
+      if (linked != null) {
+        for (Promise promise : linked) {
+          promise.raise(e);
+        }
+      }
     }
-    
-    public Promise<T> rescue(Mapper<Throwable, T> mapper) {
-	Promise<T> promise = new Promise<>();
-	link(promise);
-        addSuccess(v -> promise.set(v));
-	addFailure(e -> promise.set(mapper.map(e)));
-	return promise;
-    }
+  }
 
-    public void raise(Throwable e) {
-	synchronized (this) {
-	    if (set.availablePermits() == 1) {
-		if (raise != null) {
-		    raise.apply(e);
-		}
-	    }
-	    if (linked != null) {
-		for (Promise promise : linked) {
-		    promise.raise(e);
-		}
-	    }
-	}
+  public Promise<T> onRaise(Block<Throwable> block) {
+    synchronized (this) {
+      if (raise == null) {
+        raise = block;
+      } else {
+        raise = Blocks.chain(raise, block);
+      }
     }
+    return this;
+  }
 
-    public Promise<T> onRaise(Block<Throwable> block) {
-	synchronized (this) {
-	    if (raise == null) {
-		raise = block;
-	    } else {
-		raise = Blocks.chain(raise, block);
-	    }
-	}
-	return this;
+  public void link(Promise promise) {
+    synchronized (this) {
+      if (linked == null) {
+        linked = new HashSet<>();
+      }
+      linked.add(promise);
     }
-
-    public void link(Promise promise) {
-	synchronized (this) {
-	    if (linked == null) {
-		linked = new HashSet<>();
-	    }
-	    linked.add(promise);
-	}
-    }
+  }
 }
