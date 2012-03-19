@@ -1,13 +1,17 @@
 package spullara.util.concurrent;
 
+import spullara.util.functions.Block;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import spullara.util.functions.Block;
 
 public class Promises {
+    // Code Coverage
+    private Promises() {}
+    static {new Promises();}
 
     public static <T> Promise<T> execute(ExecutorService es, final Callable<T> callable) {
         final Promise<T> promise = new Promise<>();
