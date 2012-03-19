@@ -17,6 +17,13 @@ import static org.junit.Assert.fail;
 
 public class PromisesTest {
 
+	public static void main(String[] args) throws Exception {
+		PromisesTest pt = new PromisesTest();
+		pt.setup();
+		pt.testPromises();
+		System.out.println("Success.");
+	}
+
     private static ExecutorService es;
 
     @BeforeClass
