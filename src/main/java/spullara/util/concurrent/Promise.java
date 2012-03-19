@@ -177,9 +177,9 @@ public class Promise<T> {
     promise.link(promiseB);
     AtomicBoolean done = new AtomicBoolean();
     Block<T> block = v -> {
-    if (done.compareAndSet(false, true)) {
-      promise.set(v);
-    }
+      if (done.compareAndSet(false, true)) {
+        promise.set(v);
+      }
     };
     addSuccess(block);
     promiseB.addSuccess(block);
