@@ -134,7 +134,8 @@ public class Promise<T> {
   public <V> Promise<V> map(Mapper<T, V> mapper) {
     Promise<V> promise = new Promise<V>();
     link(promise);
-    addSuccess(value -> promise.set(mapper.map(value)));
+    addSuccess(v -> promise.set(mapper.map(v)));
+    addFailure(e -> promise.setException(e));
     return promise;
   }
 
@@ -155,14 +156,14 @@ public class Promise<T> {
     link(promise);
     promise.link(promiseB);
     AtomicReference ref = new AtomicReference();
-    addSuccess(value -> {
-      if (!ref.weakCompareAndSet(null, value)) {
-        promise.set(new Tuple2<>(value, (B) ref.get()));
+    addSuccess(v -> {
+      if (!ref.weakCompareAndSet(null, v)) {
+        promise.set(new Tuple2<>(v, (B) ref.get()));
       }
     });
-    promiseB.addSuccess(value -> {
-      if (!ref.weakCompareAndSet(null, value)) {
-        promise.set(new Tuple2<>((T) ref.get(), value));
+    promiseB.addSuccess(v -> {
+      if (!ref.weakCompareAndSet(null, v)) {
+        promise.set(new Tuple2<>((T) ref.get(), v));
       }
     });
     addFailure(e -> promise.setException(e));
@@ -175,9 +176,9 @@ public class Promise<T> {
     link(promise);
     promise.link(promiseB);
     AtomicBoolean done = new AtomicBoolean();
-    Block<T> block = value -> {
+    Block<T> block = v -> {
     if (done.compareAndSet(false, true)) {
-      promise.set(value);
+      promise.set(v);
     }
     };
     addSuccess(block);
