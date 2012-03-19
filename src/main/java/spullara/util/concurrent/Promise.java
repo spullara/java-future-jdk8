@@ -151,19 +151,19 @@ public class Promise<T> {
     return promise;
   }
 
-  public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
-    Promise<Tuple2<T, B>> promise = new Promise<>();
+  public <B> Promise<Pair<T, B>> join(Promise<B> promiseB) {
+    Promise<Pair<T, B>> promise = new Promise<>();
     link(promise);
     promise.link(promiseB);
     AtomicReference ref = new AtomicReference();
     addSuccess(v -> {
       if (!ref.weakCompareAndSet(null, v)) {
-        promise.set(new Tuple2<>(v, (B) ref.get()));
+        promise.set(new Pair<>(v, (B) ref.get()));
       }
     });
     promiseB.addSuccess(v -> {
       if (!ref.weakCompareAndSet(null, v)) {
-        promise.set(new Tuple2<>((T) ref.get(), v));
+        promise.set(new Pair<>((T) ref.get(), v));
       }
     });
     addFailure(e -> promise.setException(e));
@@ -176,13 +176,21 @@ public class Promise<T> {
     link(promise);
     promise.link(promiseB);
     AtomicBoolean done = new AtomicBoolean();
-    Block<T> block = v -> {
+    AtomicBoolean failed = new AtomicBoolean();
+    Block<T> success = v -> {
       if (done.compareAndSet(false, true)) {
         promise.set(v);
       }
     };
-    addSuccess(block);
-    promiseB.addSuccess(block);
+	Block<Throwable> fail = e -> {
+		if (!failed.compareAndSet(false, true)) {
+			promise.setException(e);
+		}
+	};
+    addSuccess(success);
+    promiseB.addSuccess(success);
+    addFailure(fail);
+    promiseB.addFailure(fail);
     return promise;
   }
 
