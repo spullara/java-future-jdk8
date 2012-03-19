@@ -1,14 +1,15 @@
 package spullara.util.concurrent;
 
+import spullara.util.functions.Block;
+import spullara.util.functions.Blocks;
+import spullara.util.functions.Mapper;
+import spullara.util.functions.Pair;
+
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import spullara.util.functions.Block;
-import spullara.util.functions.Blocks;
-import spullara.util.functions.Mapper;
 
 /**
  * You can use a Promise like an asychronous callback or you can block
@@ -138,6 +139,11 @@ public class Promise<T> {
                 promise.set(mapper.map(value));
             }
         });
+        addFailure(new Block<Throwable>() {
+            public void apply(Throwable throwable) {
+                promise.setException(throwable);
+            }
+        });
         return promise;
     }
 
@@ -176,8 +182,8 @@ public class Promise<T> {
         return promise;
     }
 
-    public <B> Promise<Tuple2<T, B>> join(Promise<B> promiseB) {
-        final Promise<Tuple2<T, B>> promise = new Promise<>();
+    public <B> Promise<Pair<T, B>> join(Promise<B> promiseB) {
+        final Promise<Pair<T, B>> promise = new Promise<>();
         link(promise);
         promise.link(promiseB);
         final AtomicReference ref = new AtomicReference();
@@ -185,7 +191,7 @@ public class Promise<T> {
             @Override
             public void apply(T value) {
                 if (!ref.weakCompareAndSet(null, value)) {
-                    promise.set(new Tuple2<>(value, (B) ref.get()));
+                    promise.set(new Pair<>(value, (B) ref.get()));
                 }
             }
         });
@@ -193,7 +199,7 @@ public class Promise<T> {
             @Override
             public void apply(B value) {
                 if (!ref.weakCompareAndSet(null, value)) {
-                    promise.set(new Tuple2<>((T) ref.get(), value));
+                    promise.set(new Pair<>((T) ref.get(), value));
                 }
             }
         });
@@ -217,7 +223,8 @@ public class Promise<T> {
         link(promise);
         promise.link(promiseB);
         final AtomicBoolean done = new AtomicBoolean();
-        Block<T> block = new Block<T>() {
+        final AtomicBoolean failed = new AtomicBoolean();
+        Block<T> success = new Block<T>() {
             @Override
             public void apply(T t) {
                 if (done.compareAndSet(false, true)) {
@@ -225,8 +232,18 @@ public class Promise<T> {
                 }
             }
         };
-        addSuccess(block);
-        promiseB.addSuccess(block);
+        Block<Throwable> fail = new Block<Throwable>() {
+            @Override
+            public void apply(Throwable t) {
+                if (!failed.compareAndSet(false, true)) {
+                    promise.setException(t);
+                }
+            }
+        };
+        addSuccess(success);
+        promiseB.addSuccess(success);
+        addFailure(fail);
+        promiseB.addFailure(fail);
         return promise;
     }
 
@@ -292,10 +309,11 @@ public class Promise<T> {
                     raise.apply(e);
                 }
             }
-            for (Promise promise : linked) {
-                promise.raise(e);
+            if (linked != null) {
+                for (Promise promise : linked) {
+                    promise.raise(e);
+                }
             }
-
         }
     }
 }
