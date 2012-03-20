@@ -6,3 +6,77 @@ This style encourages callbacks rather than blocking and makes it much easier
 to write multi-threaded code without context switching for non-blocking
 code. JDK 8 makes the style readable in Java by introducing lambdas into
 the language.
+
+At Twitter we use Scala and have our own library of for Futures[1] and
+network programming called Finagle[2]. We find the programming model
+to be very powerful but it relies heavily on callbacks which makes it
+awkward when calling it from < Java 8. The current implementation will
+be difficult to port directly to lambda, so I have started
+prototyping a new class called "Promise" that ultimately would
+implement some future Java Future interface. I'd love to get feedback
+on my progress and some feedback on whether this should be included in
+the JDK itself. The API very much resembles the new Collections API
+and places where the names differ I'd be happy to rename them.
+
+https://github.com/spullara/java-future-jdk8
+
+I've got both a Java 7 (in the jdk7 branch) and Java 8 (master branch)
+version running, just for comparison sake. Here is a quick overview of
+the API:
+
+Promise:
+ void set(T) - satisfy the promise with a value
+ void setException(Throwable) - satisfy the promise with a failure
+ T get() - wait until the Promise is set and return the value, comparable to Future.get()
+ Promise<V> map(Mapper<T, V>) - return a Promise that is satisfied after the mapper maps the underlying Promise value
+ Promise<V> flatMap(Mapper<T, Promise<V>>) - return a Promise that is created based on the result of the underlying Promise
+ Promise<Pair<T, B>> join(Promise<B>) - return a Promise that is satisfied when both underlying Promises are complete
+ Promise<T> select(Promise<T>) - return a Promise that is satisfied when either underlying promise is satisfied
+ Promise<T> onSuccess(Block<T>) - execute the Block when the promise is successful
+ Promise<T> onFailure(Block<Throwable>) - execute the Block when the promise fails
+ Promise<T> ensure(Runnable) - run the runnable on success or failure
+ Promise<T> rescue(Mapper<Throwable, T>) - on failure, return the mapped result instead
+ Promise<T> onRaise(Block<Throwable>) - react to a signal, often cancellations
+ void raise(Throwable e) - send a signal to this Promise and any linked promises
+ void link(Promise promise) - link signals between two promises
+
+Promises:
+ Promise<T> execute(ExecutorService, Callable<T>) - executes the callable and then sets the Promise to the return value asynchronously
+ Promise<? extends List<T>> collect(List<Promise<T>>) - waits until all the Promises are set and then sets a List of results on the returned Promise
+
+Here are some common use cases:
+
+1) User authentication is required to continue processing, cleaning up
+no matter what:
+
+userLookup(id).flatMap( u -> u.getUserData())
+ .onSuccess(d -> render(d))
+ .onFailure(e -> sendError())
+ .ensure( () -> cleanup() );
+
+2) Render a scene:
+
+Promises.collect(listOfSceneSegments()).foreach( results ->
+displayScene(results));
+
+3) You need two resources to do a third operation:
+
+userData.join(pageData).onSuccess(pair -> render(pair));
+
+4) You want to send 2 requests and take the first one that returns:
+
+request1.select(request2).onSuccess( response -> doSomethind(response));
+
+5) You need to transform your model data to view data before rendering:
+
+getData.map(d -> new ViewData(d)).onSuccess(v -> renderView(v));
+
+6) Render a result message on failure
+
+getPage.map(v -> goodMessage).rescue(e -> badMessage).onSuccess(v ->
+renderMessage(v));
+
+My current plan is that if this is interesting to a wide audience I
+was going to go down the route of also reimplementing the Future
+interface with default methods and making Promise an implementer of
+that new interface.
