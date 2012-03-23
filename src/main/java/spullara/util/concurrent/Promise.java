@@ -2,14 +2,12 @@ package spullara.util.concurrent;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.functions.*;
+import java.util.functions.Block;
+import java.util.functions.Blocks;
+import java.util.functions.Mapper;
 
 /**
  * You can use a Promise like an asychronous callback or you can block
@@ -55,7 +53,7 @@ public class Promise<T> {
      * The value of a successful Promise.
      */
     private T value;
-    
+
     /**
      * The throwable of a failed Promise.
      */
@@ -216,13 +214,13 @@ public class Promise<T> {
     public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
-        addSuccess(value - > {
-                        Promise <V> mapped = mapper.map(value);
-			promise.link(mapped);
-                        mapped.addSuccess(v -> promise.set(v));
-                        mapped.addFailure(e - > promise.setException(e));
+        addSuccess(value -> {
+                Promise < V > mapped = mapper.map(value);
+        promise.link(mapped);
+        mapped.addSuccess(v -> promise.set(v));
+        mapped.addFailure(e -> promise.setException(e));
         });
-        addFailure(e - > promise.setException(e));
+        addFailure(e -> promise.setException(e));
         return promise;
     }
 
@@ -237,14 +235,14 @@ public class Promise<T> {
         promise.link(promiseB);
         AtomicReference ref = new AtomicReference();
         addSuccess(v -> {
-            if (!ref.weakCompareAndSet(null, v)) {
-                promise.set(new Pair<>(v, (B) ref.get()));
-            }
+        if (!ref.weakCompareAndSet(null, v)) {
+            promise.set(new Pair<>(v, (B) ref.get()));
+        }
         });
         promiseB.addSuccess(v -> {
-            if (!ref.weakCompareAndSet(null, v)) {
-                promise.set(new Pair<>((T) ref.get(), v));
-            }
+        if (!ref.weakCompareAndSet(null, v)) {
+            promise.set(new Pair<>((T) ref.get(), v));
+        }
         });
         addFailure(e -> promise.setException(e));
         promiseB.addFailure(e -> promise.setException(e));
@@ -266,11 +264,11 @@ public class Promise<T> {
                 promise.set(v);
             }
         };
-	Block<Throwable> fail = e -> {
-	    if (!failed.compareAndSet(false, true)) {
-		promise.setException(e);
-	    }
-	};
+        Block<Throwable> fail = e -> {
+            if (!failed.compareAndSet(false, true)) {
+                promise.setException(e);
+            }
+        };
         addSuccess(success);
         promiseB.addSuccess(success);
         addFailure(fail);
