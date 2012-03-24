@@ -83,6 +83,7 @@ public class Promise<T> implements SettableFuture<T> {
             if (localSuccess != null) {
                 localSuccess.apply(value);
             }
+            done();
         }
     }
 
@@ -105,7 +106,12 @@ public class Promise<T> implements SettableFuture<T> {
             if (localFailed != null) {
                 localFailed.apply(throwable);
             }
+            done();
         }
+    }
+
+    @Override
+    public void done() {
     }
 
     /**
