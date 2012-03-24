@@ -15,7 +15,7 @@ import java.util.functions.Mapper;
  * <p/>
  * Loosely based on: http://twitter.github.com/scala_school/finagle.html
  */
-public class Promise<T> {
+public class Promise<T> implements SettableFuture<T> {
 
     /**
      * Create an unsatisfied Promise.
@@ -48,6 +48,11 @@ public class Promise<T> {
      * This latch is counted down when the Promise can be read.
      */
     private CountDownLatch read = new CountDownLatch(1);
+
+    /**
+     * Cancelled
+     */
+    private volatile AtomicBoolean cancelled = new AtomicBoolean(false);
 
     /**
      * The value of a successful Promise.
@@ -123,6 +128,27 @@ public class Promise<T> {
      */
     private Block<T> success;
 
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        if (cancelled.compareAndSet(false, true)) {
+            CancellationException cancel = new CancellationException();
+            raise(cancel);
+            setException(cancel);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isCancelled() {
+        return cancelled.get();
+    }
+
+    @Override
+    public boolean isDone() {
+        return set.availablePermits() == 0;
+    }
+
     /**
      * Wait until the Promise is satisfied. If it was successful, return the
      * value. If it fails, throw an ExecutionException with the failure throwable
@@ -133,6 +159,9 @@ public class Promise<T> {
         if (throwable == null) {
             return value;
         } else {
+            if (throwable instanceof CancellationException) {
+                throw (CancellationException) throwable;
+            }
             throw new ExecutionException(throwable);
         }
     }
@@ -147,6 +176,9 @@ public class Promise<T> {
             if (throwable == null) {
                 return value;
             } else {
+                if (throwable instanceof CancellationException) {
+                    throw (CancellationException) throwable;
+                }
                 throw new ExecutionException(throwable);
             }
         } else {
@@ -215,10 +247,10 @@ public class Promise<T> {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
         addSuccess(value -> {
-                Promise < V > mapped = mapper.map(value);
-        promise.link(mapped);
-        mapped.addSuccess(v -> promise.set(v));
-        mapped.addFailure(e -> promise.setException(e));
+           Promise <V> mapped = mapper.map(value);
+           promise.link(mapped);
+           mapped.addSuccess(v -> promise.set(v));
+           mapped.addFailure(e -> promise.setException(e));
         });
         addFailure(e -> promise.setException(e));
         return promise;
@@ -235,14 +267,14 @@ public class Promise<T> {
         promise.link(promiseB);
         AtomicReference ref = new AtomicReference();
         addSuccess(v -> {
-        if (!ref.weakCompareAndSet(null, v)) {
-            promise.set(new Pair<>(v, (B) ref.get()));
-        }
+            if (!ref.weakCompareAndSet(null, v)) {
+                promise.set(new Pair<>(v, (B) ref.get()));
+            }
         });
         promiseB.addSuccess(v -> {
-        if (!ref.weakCompareAndSet(null, v)) {
-            promise.set(new Pair<>((T) ref.get(), v));
-        }
+            if (!ref.weakCompareAndSet(null, v)) {
+                promise.set(new Pair<>((T) ref.get(), v));
+            }
         });
         addFailure(e -> promise.setException(e));
         promiseB.addFailure(e -> promise.setException(e));
@@ -359,4 +391,5 @@ public class Promise<T> {
             linked.add(promise);
         }
     }
+
 }

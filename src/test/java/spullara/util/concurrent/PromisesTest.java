@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.util.functions.*;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PromisesTest {
@@ -38,6 +39,16 @@ public class PromisesTest {
         Promise<String> promise4 = Promises.execute(es, () -> {Thread.sleep(500);
         throw new RuntimeException("Promise4");});
         Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
+        Promise<String> promise6 = Promises.execute(es, () -> {Thread.sleep(1000); return "Done.";});
+        promise6.cancel(true);
+
+        try {
+            assertTrue(promise6.isCancelled());
+            assertTrue(promise6.isDone());
+            promise6.get();
+            fail("Was not cancelled");
+        } catch (CancellationException ce) {
+        }
 
         Promise<String> result10 = new Promise<>();
         try {
