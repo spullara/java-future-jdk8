@@ -64,6 +64,11 @@ public class Promise<T> implements SettableFuture<T> {
      */
     private Throwable throwable;
 
+	/**
+	 * Successful
+	 */
+	private boolean successful = false;
+
     /**
      * Satisfy the Promise with a successful value. This executes all the Blocks associated
      * with "success" in the order they were added to the Promise. We synchronize against
@@ -71,6 +76,7 @@ public class Promise<T> implements SettableFuture<T> {
      */
     public void set(T value) {
         if (set.tryAcquire()) {
+	        successful = true;
             this.value = value;
             read.countDown();
             Block<T> localSuccess = null;
@@ -200,7 +206,7 @@ public class Promise<T> implements SettableFuture<T> {
     private void addSuccess(Block<T> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
-                if (value != null) {
+                if (successful) {
                     block.apply(value);
                 }
             } else if (success == null) {
@@ -219,7 +225,7 @@ public class Promise<T> implements SettableFuture<T> {
     private void addFailure(Block<Throwable> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
-                if (throwable != null) {
+                if (!successful) {
                     block.apply(throwable);
                 }
             } else if (failed == null) {
