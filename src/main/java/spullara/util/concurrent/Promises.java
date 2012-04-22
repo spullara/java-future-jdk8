@@ -32,7 +32,7 @@ public class Promises {
 			if (list.size() == size) {
 			    promiseOfList.set(list);
 			}
-		    }).onFailure(e -> promiseOfList.setException(e));
+		    }).onFailure(e -> { promiseOfList.setException(e); });
 	    }
 	}
 	return promiseOfList;

@@ -52,7 +52,7 @@ public class PromisesTest {
 
         Promise<String> result10 = new Promise<>();
         try {
-            promise4.onFailure(e -> result10.set("Failed")).get(0, TimeUnit.SECONDS);
+            promise4.onFailure(e -> { result10.set("Failed"); }).get(0, TimeUnit.SECONDS);
             fail("Didn't timeout");
         } catch (TimeoutException te) {
         }
@@ -64,9 +64,9 @@ public class PromisesTest {
         }
 
         Promise<String> result3 = new Promise<>();
-        promise.select(promise2).onSuccess(v -> result3.set("Selected: " + v));
+        promise.select(promise2).onSuccess(v -> { result3.set("Selected: " + v); });
         final Promise<String> result4 = new Promise<>();
-        promise2.select(promise).onSuccess(v -> result4.set("Selected: " + v));
+        promise2.select(promise).onSuccess(v -> { result4.set("Selected: " + v); });
         assertEquals("Selected: Done2.", result3.get());
         assertEquals("Selected: Done2.", result4.get());
 
@@ -76,12 +76,12 @@ public class PromisesTest {
         assertEquals("Done2., Done.", map2.get());
 
         final Promise<String> result1 = new Promise<>();
-        promise.select(promise4).onSuccess(s -> result1.set("Selected: " + s));
+        promise.select(promise4).onSuccess(s -> { result1.set("Selected: " + s); });
         assertEquals("Selected: Done.", result1.get());
         assertEquals("Failed", result10.get());
 
         try {
-            promise4.select(promise5).onFailure(e -> result1.set(e.getMessage())).get();
+            promise4.select(promise5).onFailure(e -> { result1.set(e.getMessage()); }).get();
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
@@ -117,13 +117,13 @@ public class PromisesTest {
 
         Promise<String> result11 = new Promise<>();
         try {
-            promise2.flatMap(v -> promise4).onFailure(e -> result11.set("Failed")).get();
+            promise2.flatMap(v -> promise4).onFailure(e -> { result11.set("Failed"); }).get();
         } catch (ExecutionException ee) {
             assertEquals("Failed", result11.get());
         }
 
         Promise<String> result2 = new Promise<>();
-        promise4.flatMap(v -> promise2).onFailure(e -> result2.set("Flat map failed: " + e));
+        promise4.flatMap(v -> promise2).onFailure(e -> { result2.set("Flat map failed: " + e); });
         assertEquals("Flat map failed: java.lang.RuntimeException: Promise4", result2.get());
 
         assertEquals("Done.", promise.get(1, TimeUnit.DAYS));
@@ -142,13 +142,13 @@ public class PromisesTest {
 
         Promise<String> result5 = new Promise<>();
         Promise<String> result6 = new Promise<>();
-        promise.onSuccess(s -> result5.set("onSuccess: " + s)).onFailure(e -> result5.set("onFailure: " + e)).ensure(() -> result6.set("Ensured"));
+        promise.onSuccess(s -> { result5.set("onSuccess: " + s); }).onFailure(e -> { result5.set("onFailure: " + e); }).ensure(() -> { result6.set("Ensured"); });
         assertEquals("onSuccess: Done.", result5.get());
         assertEquals("Ensured", result6.get());
 
         Promise<String> result7 = new Promise<>();
         Promise<String> result8 = new Promise<>();
-        promise4.onSuccess(s -> result7.set("onSuccess: " + s)).onFailure(e -> result7.set("onFailure: " + e)).ensure(() -> result8.set("Ensured"));
+        promise4.onSuccess(s -> { result7.set("onSuccess: " + s); }).onFailure(e -> { result7.set("onFailure: " + e); }).ensure(() -> { result8.set("Ensured"); });
         assertEquals("onFailure: java.lang.RuntimeException: Promise4", result7.get());
         assertEquals("Ensured", result8.get());
 
@@ -164,7 +164,7 @@ public class PromisesTest {
         }
 
         Promise<String> result9 = new Promise<>();
-        promise.onSuccess(v -> result9.set("onSuccess: " + v));
+        promise.onSuccess(v -> { result9.set("onSuccess: " + v); });
         assertEquals("onSuccess: Done.", result9.get());
 
         es.shutdown();
