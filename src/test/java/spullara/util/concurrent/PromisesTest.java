@@ -41,7 +41,7 @@ public class PromisesTest {
                 return "Done2.";
             }
         });
-        final Promise<String> promise3 = new Promise<>("Constant");
+        final Promise<String> promise3 = new Promise<String>("Constant");
         final Promise<String> promise4 = Promises.execute(es, new Callable<String>() {
             @Override
             public String call() throws Exception {
@@ -49,9 +49,9 @@ public class PromisesTest {
                 throw new RuntimeException("Promise4");
             }
         });
-        Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
+        Promise<String> promise5 = new Promise<String>(new RuntimeException("Promise5"));
 
-        final Promise<String> result10 = new Promise<>();
+        final Promise<String> result10 = new Promise<String>();
         try {
             promise4.onFailure(new Block<Throwable>() {
                 @Override
@@ -73,14 +73,14 @@ public class PromisesTest {
             fail("Didn't fail the map");
         } catch (ExecutionException e) {
         }
-        final Promise<String> result3 = new Promise<>();
+        final Promise<String> result3 = new Promise<String>();
         promise.select(promise2).foreach(new Block<String>() {
             @Override
             public void apply(String s) {
                 result3.set("Selected: " + s);
             }
         });
-        final Promise<String> result4 = new Promise<>();
+        final Promise<String> result4 = new Promise<String>();
         promise2.select(promise).foreach(new Block<String>() {
             @Override
             public void apply(String s) {
@@ -105,7 +105,7 @@ public class PromisesTest {
         assertEquals("Done., Done2.", map1.get());
         assertEquals("Done2., Done.", map2.get());
 
-        final Promise<String> result1 = new Promise<>();
+        final Promise<String> result1 = new Promise<String>();
         promise.select(promise4).foreach(new Block<String>() {
             @Override
             public void apply(String s) {
@@ -134,7 +134,7 @@ public class PromisesTest {
                 return "Interrupted";
             }
         });
-        Promise<Pair<String, String>> join = promise3.join(onraised.onRaise(new Block<Throwable>() {
+        final Promise<Pair<String, String>> join = promise3.join(onraised.onRaise(new Block<Throwable>() {
             @Override
             public void apply(Throwable throwable) {
                 monitor.countDown();
@@ -155,13 +155,13 @@ public class PromisesTest {
         }).map(new Mapper<String, String>() {
             @Override
             public String map(String s) {
-                promise3.raise(new CancellationException());
+                join.raise(new CancellationException());
                 return "Set2: " + s;
             }
         });
 
         assertEquals("Set2: Set1: Done.", map.get());
-        assertEquals(new Pair<>("Constant", "Interrupted"), join.get());
+        assertEquals(new Pair<String, String>("Constant", "Interrupted"), join.get());
 
         try {
             promise.join(promise4).map(new Mapper<Pair<String, String>, Object>() {
@@ -193,7 +193,7 @@ public class PromisesTest {
             }
         }).get());
 
-        final Promise<String> promise11 = new Promise<>();
+        final Promise<String> promise11 = new Promise<String>();
         try {
             promise2.flatMap(new Mapper<String, Promise<String>>() {
                 @Override
@@ -211,7 +211,7 @@ public class PromisesTest {
             assertEquals("Failed", promise11.get());
         }
 
-        final Promise<String> result2 = new Promise<>();
+        final Promise<String> result2 = new Promise<String>();
         promise4.flatMap(new Mapper<String, Promise<String>>() {
             @Override
             public Promise<String> map(String s) {
@@ -239,8 +239,8 @@ public class PromisesTest {
         } catch (ExecutionException e) {
         }
 
-        final Promise<String> result5 = new Promise<>();
-        final Promise<String> result6 = new Promise<>();
+        final Promise<String> result5 = new Promise<String>();
+        final Promise<String> result6 = new Promise<String>();
         promise.onSuccess(new Block<String>() {
             @Override
             public void apply(String s) {
@@ -260,8 +260,8 @@ public class PromisesTest {
         assertEquals("onSuccess: Done.", result5.get());
         assertEquals("Ensured", result6.get());
 
-        final Promise<String> result7 = new Promise<>();
-        final Promise<String> result8 = new Promise<>();
+        final Promise<String> result7 = new Promise<String>();
+        final Promise<String> result8 = new Promise<String>();
         promise4.onSuccess(new Block<String>() {
             @Override
             public void apply(String s) {
@@ -331,7 +331,7 @@ public class PromisesTest {
         } catch (ExecutionException ee) {
         }
 
-        final Promise<String> result9 = new Promise<>();
+        final Promise<String> result9 = new Promise<String>();
         promise.foreach(new Block<String>() {
             @Override
             public void apply(String s) {

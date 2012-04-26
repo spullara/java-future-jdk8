@@ -58,6 +58,9 @@ public class Promise<T> {
 
     public void setException(Throwable throwable) {
         if (set.tryAcquire()) {
+            if (throwable == null) {
+                throw new NullPointerException("Throwable cannot be null");
+            }
             this.throwable = throwable;
             read.countDown();
             Block<Throwable> localFailed = null;
@@ -102,7 +105,7 @@ public class Promise<T> {
     private void addSuccess(Block<T> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
-                if (value != null) {
+                if (throwable == null) {
                     block.apply(value);
                 }
             } else if (success == null) {
@@ -132,8 +135,8 @@ public class Promise<T> {
      */
 
     public <V> Promise<V> map(final Mapper<T, V> mapper) {
-        final Promise<V> promise = new Promise<>();
-        link(promise);
+        final Promise<V> promise = new Promise<V>();
+        promise.link(this);
         addSuccess(new Block<T>() {
             public void apply(T value) {
                 promise.set(mapper.map(value));
@@ -150,15 +153,15 @@ public class Promise<T> {
     private <V> void link(Promise<V> promise) {
         synchronized (this) {
             if (linked == null) {
-                linked = new HashSet<>();
+                linked = new HashSet();
             }
             linked.add(promise);
         }
     }
 
     public <V> Promise<V> flatMap(final Mapper<T, Promise<V>> mapper) {
-        final Promise<V> promise = new Promise<>();
-        link(promise);
+        final Promise<V> promise = new Promise<V>();
+        promise.link(this);
         addSuccess(new Block<T>() {
             public void apply(T value) {
                 Promise<V> mapped = mapper.map(value);
@@ -183,15 +186,15 @@ public class Promise<T> {
     }
 
     public <B> Promise<Pair<T, B>> join(Promise<B> promiseB) {
-        final Promise<Pair<T, B>> promise = new Promise<>();
-        link(promise);
+        final Promise<Pair<T, B>> promise = new Promise<Pair<T, B>>();
+        promise.link(this);
         promise.link(promiseB);
         final AtomicReference ref = new AtomicReference();
         addSuccess(new Block<T>() {
             @Override
             public void apply(T value) {
                 if (!ref.weakCompareAndSet(null, value)) {
-                    promise.set(new Pair<>(value, (B) ref.get()));
+                    promise.set(new Pair(value, (B) ref.get()));
                 }
             }
         });
@@ -199,7 +202,7 @@ public class Promise<T> {
             @Override
             public void apply(B value) {
                 if (!ref.weakCompareAndSet(null, value)) {
-                    promise.set(new Pair<>((T) ref.get(), value));
+                    promise.set(new Pair((T) ref.get(), value));
                 }
             }
         });
@@ -219,8 +222,8 @@ public class Promise<T> {
     }
 
     public Promise<T> select(Promise<T> promiseB) {
-        final Promise<T> promise = new Promise<>();
-        link(promise);
+        final Promise<T> promise = new Promise<T>();
+        promise.link(this);
         promise.link(promiseB);
         final AtomicBoolean done = new AtomicBoolean();
         final AtomicBoolean failed = new AtomicBoolean();
@@ -287,8 +290,8 @@ public class Promise<T> {
     }
 
     public Promise<T> rescue(final Mapper<Throwable, T> mapper) {
-        final Promise<T> promise = new Promise<>();
-        link(promise);
+        final Promise<T> promise = new Promise<T>();
+        promise.link(this);
         addSuccess(new Block<T>() {
             public void apply(T t) {
                 promise.set(t);
