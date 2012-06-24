@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.functions.*;
 
 import static junit.framework.Assert.assertEquals;
@@ -33,13 +34,14 @@ public class PromisesTest {
 
     @Test
     public void testPromises() throws Exception {
+        AtomicBoolean executed = new AtomicBoolean(false);
         Promise<String> promise = Promises.execute(es, () -> {Thread.sleep(1000); return "Done.";});
         Promise<String> promise2 = Promises.execute(es, () -> {Thread.sleep(900); return "Done2.";});
         Promise<String> promise3 = new Promise<>("Constant");
         Promise<String> promise4 = Promises.execute(es, () -> {Thread.sleep(500);
         throw new RuntimeException("Promise4");});
         Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
-        Promise<String> promise6 = Promises.execute(es, () -> {Thread.sleep(1000); return "Done.";});
+        Promise<String> promise6 = Promises.execute(es, () -> {executed.set(true); Thread.sleep(1000); return "Done.";});
         promise6.cancel(true);
 
         try {
@@ -48,6 +50,9 @@ public class PromisesTest {
             promise6.get();
             fail("Was not cancelled");
         } catch (CancellationException ce) {
+            if (executed.get()) {
+                fail("Executed though cancelled immediately");
+            }
         }
 
         Promise<String> result10 = new Promise<>();

@@ -10,8 +10,13 @@ import java.util.functions.Blocks;
 import java.util.functions.Mapper;
 
 /**
- * You can use a Promise like an asychronous callback or you can block
- * on it like you would a Future.
+ * You can use a Promise like an asynchronous callback or you can block
+ * on it like you would a Future. Callbacks are executed:
+ * 1. In the thread that sets the promise, if it wasn't satisfied when
+ *    the callback was added.
+ * 2. In the caller thread, if it was satisfied when the callback is added.
+ * You should never block in the callback. If you need to do more work that does
+ * block you should again use a Promise and flatMap.
  * <p/>
  * Loosely based on: http://twitter.github.com/scala_school/finagle.html
  */
@@ -67,7 +72,7 @@ public class Promise<T> implements SettableFuture<T> {
 	/**
 	 * Successful
 	 */
-	private boolean successful = false;
+	private volatile boolean successful = false;
 
     /**
      * Satisfy the Promise with a successful value. This executes all the Blocks associated
