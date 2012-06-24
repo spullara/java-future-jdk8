@@ -42,17 +42,17 @@ public class Promise<T> implements SettableFuture<T> {
     /**
      * This semaphore guards whether or not a Promise has already been set.
      */
-    private Semaphore set = new Semaphore(1);
+    private final Semaphore set = new Semaphore(1);
 
     /**
      * This latch is counted down when the Promise can be read.
      */
-    private CountDownLatch read = new CountDownLatch(1);
+    private final CountDownLatch read = new CountDownLatch(1);
 
     /**
      * Cancelled
      */
-    private volatile AtomicBoolean cancelled = new AtomicBoolean(false);
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
 
     /**
      * The value of a successful Promise.
