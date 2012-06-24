@@ -42,17 +42,17 @@ public class Promise<T> implements SettableFuture<T> {
     /**
      * This semaphore guards whether or not a Promise has already been set.
      */
-    private Semaphore set = new Semaphore(1);
+    private final Semaphore set = new Semaphore(1);
 
     /**
      * This latch is counted down when the Promise can be read.
      */
-    private CountDownLatch read = new CountDownLatch(1);
+    private final CountDownLatch read = new CountDownLatch(1);
 
     /**
      * Cancelled
      */
-    private volatile AtomicBoolean cancelled = new AtomicBoolean(false);
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
 
     /**
      * The value of a successful Promise.
@@ -244,8 +244,8 @@ public class Promise<T> implements SettableFuture<T> {
     public <V> Promise<V> map(Mapper<T, V> mapper) {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
-        addSuccess(v -> { promise.set(mapper.map(v)); });
-        addFailure(e -> { promise.setException(e); });
+        addSuccess( (T v) -> { promise.set(mapper.map(v)); });
+        addFailure( (Throwable e) -> { promise.setException(e); });
         return promise;
     }
 
@@ -258,13 +258,13 @@ public class Promise<T> implements SettableFuture<T> {
     public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
-        addSuccess(value -> {
+        addSuccess( (T value) -> {
            Promise <V> mapped = mapper.map(value);
            promise.link(mapped);
-           mapped.addSuccess(v -> { promise.set(v); });
-           mapped.addFailure(e -> { promise.setException(e); });
+           mapped.addSuccess( (V v) -> { promise.set(v); });
+           mapped.addFailure( (Throwable e) -> { promise.setException(e); });
         });
-        addFailure(e -> { promise.setException(e); });
+        addFailure( (Throwable e) -> { promise.setException(e); });
         return promise;
     }
 
@@ -278,18 +278,18 @@ public class Promise<T> implements SettableFuture<T> {
         promise.link(this);
         promise.link(promiseB);
         AtomicReference ref = new AtomicReference();
-        addSuccess(v -> {
+        addSuccess( (T v) -> {
             if (!ref.weakCompareAndSet(null, v)) {
                 promise.set(new Pair<>(v, (B) ref.get()));
             }
         });
-        promiseB.addSuccess(v -> {
+        promiseB.addSuccess( (B v) -> {
             if (!ref.weakCompareAndSet(null, v)) {
                 promise.set(new Pair<>((T) ref.get(), v));
             }
         });
-        addFailure(e -> { promise.setException(e); });
-        promiseB.addFailure(e -> { promise.setException(e); });
+        addFailure( (Throwable e) -> { promise.setException(e); });
+        promiseB.addFailure( (Throwable e) -> { promise.setException(e); });
         return promise;
     }
 
@@ -303,12 +303,12 @@ public class Promise<T> implements SettableFuture<T> {
         promise.link(promiseB);
         AtomicBoolean done = new AtomicBoolean();
         AtomicBoolean failed = new AtomicBoolean();
-        Block<T> success = v -> {
+        Block<T> success = (T v) -> {
             if (done.compareAndSet(false, true)) {
                 promise.set(v);
             }
         };
-        Block<Throwable> fail = e -> {
+        Block<Throwable> fail = (Throwable e) -> {
             if (!failed.compareAndSet(false, true)) {
                 promise.setException(e);
             }
@@ -355,8 +355,8 @@ public class Promise<T> implements SettableFuture<T> {
     public Promise<T> rescue(Mapper<Throwable, T> mapper) {
         Promise<T> promise = new Promise<>();
         promise.link(this);
-        addSuccess(v -> { promise.set(v); });
-        addFailure(e -> { promise.set(mapper.map(e)); });
+        addSuccess( (T v) -> { promise.set(v); });
+        addFailure( (Throwable e) -> { promise.set(mapper.map(e)); });
         return promise;
     }
 
