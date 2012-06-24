@@ -9,7 +9,7 @@ public class Promises {
 
     public static <T> Promise<T> execute(ExecutorService es, Callable<T> callable) {
 	Promise<T> promise = new Promise<>();
-	es.submit(() -> {
+	es.submit((Runnable) () -> {
 		try {
 		    promise.set(callable.call());
 		} catch (Throwable th) {
@@ -27,12 +27,12 @@ public class Promises {
 	    promiseOfList.set(list);
 	} else {
 	    for (Promise<T> promise : promises) {
-		promise.onSuccess(v -> {
+		promise.onSuccess( (T v) -> {
 			list.add(v);
 			if (list.size() == size) {
 			    promiseOfList.set(list);
 			}
-		    }).onFailure(e -> { promiseOfList.setException(e); });
+		    }).onFailure( (Throwable e) -> { promiseOfList.setException(e); });
 	    }
 	}
 	return promiseOfList;

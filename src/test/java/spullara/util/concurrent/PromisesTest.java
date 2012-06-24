@@ -70,8 +70,8 @@ public class PromisesTest {
         assertEquals("Selected: Done2.", result3.get());
         assertEquals("Selected: Done2.", result4.get());
 
-        Promise<String> map1 = promise.join(promise2).map(value -> value._1 + ", " + value._2);
-        Promise<String> map2 = promise2.join(promise).map(value -> value._1 + ", " + value._2);
+        Promise<String> map1 = promise.join(promise2).map( (Pair<String, String> value) -> value._1 + ", " + value._2);
+        Promise<String> map2 = promise2.join(promise).map( (Pair<String, String> value) -> value._1 + ", " + value._2);
         assertEquals("Done., Done2.", map1.get());
         assertEquals("Done2., Done.", map2.get());
 
@@ -81,13 +81,13 @@ public class PromisesTest {
         assertEquals("Failed", result10.get());
 
         try {
-            promise4.select(promise5).onFailure(e -> { result1.set(e.getMessage()); }).get();
+            promise4.select(promise5).onFailure( (Throwable e) -> { result1.set(e.getMessage()); }).get();
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
 
         final CountDownLatch monitor = new CountDownLatch(2);
-        Promise<String> onraise = Promises.execute(es, () -> {
+        Promise<String> onraise = Promises.execute(es, (Callable<String>) () -> {
                 monitor.await();
                 return "Interrupted";
         });
@@ -99,7 +99,7 @@ public class PromisesTest {
                 monitor.countDown();
         });
 
-        Promise<String> map = promise.map(v -> "Set1: " + v).map(v -> {
+        Promise<String> map = promise.map( (String v) -> "Set1: " + v).map( (String v) -> {
                 join.raise(new CancellationException());
                 return "Set2: " + v;
         });
@@ -108,7 +108,7 @@ public class PromisesTest {
         assertEquals(new Pair<>("Constant", "Interrupted"), join.get());
 
         try {
-            promise.join(promise4).map(value -> value._1 + ", " + value._2).get();
+            promise.join(promise4).map( (Pair<String, String> value) -> value._1 + ", " + value._2).get();
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
