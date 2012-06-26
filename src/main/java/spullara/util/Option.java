@@ -13,7 +13,11 @@ public abstract class Option<T> extends ArrayList<T> {
         super(i);
     }
 
-    public static final Option NONE = new None();
+    private static final Option NONE = new None();
+
+    public static <T> Option<T> none() {
+        return NONE;
+    }
 
     public static <T> Option<T> option(T value) {
         if (value == null) {
