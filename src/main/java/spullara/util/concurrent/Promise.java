@@ -17,11 +17,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p/>
  * Loosely based on: http://twitter.github.com/scala_school/finagle.html
  */
-public class Promise<T> {
+public class Promise<T> implements SettableFuture<T> {
 
     public Promise() {
     }
 
+    /**
+     * Create a Promise already satisfied with a successful value.
+     *
+     * @param t The value of the Promise.
+     */
     public Promise(T t) {
         set(t);
     }
@@ -33,12 +38,41 @@ public class Promise<T> {
     // The setters use this to decide who wins
     private Semaphore set = new Semaphore(1);
 
-    // The readers use this to wait for it to set
-    private CountDownLatch read = new CountDownLatch(1);
+    /**
+     * This semaphore guards whether or not a Promise has already been set.
+     */
+    private final Semaphore set = new Semaphore(1);
 
+    /**
+     * This latch is counted down when the Promise can be read.
+     */
+    private final CountDownLatch read = new CountDownLatch(1);
+
+    /**
+     * Cancelled
+     */
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
+
+    /**
+     * The value of a successful Promise.
+     */
     private T value;
+
+    /**
+     * The throwable of a failed Promise.
+     */
     private Throwable throwable;
 
+	/**
+	 * Successful
+	 */
+	private volatile boolean successful = false;
+
+    /**
+     * Satisfy the Promise with a successful value. This executes all the Blocks associated
+     * with "success" in the order they were added to the Promise. We synchronize against
+     * another thread adding more success Blocks.
+     */
     public void set(T value) {
         if (set.tryAcquire()) {
             this.value = value;
@@ -56,6 +90,11 @@ public class Promise<T> {
         }
     }
 
+    /**
+     * Satisfy the Promise with a failure throwable. This executes all the Blocks associated
+     * with "failure" in the order they were added to the Promise. We synchronize against
+     * another thread adding more failure Blocks.
+     */
     public void setException(Throwable throwable) {
         if (set.tryAcquire()) {
             if (throwable == null) {
@@ -79,8 +118,38 @@ public class Promise<T> {
     private Set<Promise> linked;
     private Block<Throwable> raise;
     private Block<Throwable> failed;
+
+    /**
+     * Block that is executed when this Promise succeeds.
+     */
     private Block<T> success;
 
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        if (cancelled.compareAndSet(false, true)) {
+            CancellationException cancel = new CancellationException();
+            raise(cancel);
+            setException(cancel);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isCancelled() {
+        return cancelled.get();
+    }
+
+    @Override
+    public boolean isDone() {
+        return set.availablePermits() == 0;
+    }
+
+    /**
+     * Wait until the Promise is satisfied. If it was successful, return the
+     * value. If it fails, throw an ExecutionException with the failure throwable
+     * as the cause. It can be interrupted.
+     */
     public T get() throws InterruptedException, ExecutionException {
         read.await();
         if (throwable == null) {
@@ -90,6 +159,11 @@ public class Promise<T> {
         }
     }
 
+    /**
+     * Wait until the Promise is satisfied or timeout. If it was successful, return
+     * the value. If it fails, throw an ExecutionException with the failure throwable
+     * as the cause. Otherwise, throw a TimeoutException. It can be interrupted.
+     */
     public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
         if (read.await(timeout, timeUnit)) {
             if (throwable == null) {
@@ -102,6 +176,11 @@ public class Promise<T> {
         }
     }
 
+    /**
+     * This adds an additional Block that is executed when success occurs if the Promise
+     * is not yet satisfied. If it was satisifed successfully we immediately call the Block
+     * with the resulting value.
+     */
     private void addSuccess(Block<T> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
@@ -116,6 +195,11 @@ public class Promise<T> {
         }
     }
 
+    /**
+     * This adds an additional Block that is executed when failure occurs if the Promise
+     * is not yet satisfied. If it has already failed we immediately call the Block with
+     * the resulting throwable.
+     */
     private void addFailure(Block<Throwable> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
@@ -131,7 +215,9 @@ public class Promise<T> {
     }
 
     /**
-     * Promise asynchronous API section.
+     * Return a Promise that holds the resulting Mapper type. When the underlying Promise completes
+     * successfully, map the value using the mapper and satisfied the returned Promise. If the
+     * underlying Promise fails, the return promise fails.
      */
 
     public <V> Promise<V> map(final Mapper<T, V> mapper) {
@@ -254,11 +340,19 @@ public class Promise<T> {
         addSuccess(block);
     }
 
+    /**
+     * If and only if the Promise succeeds, execute this Block. If this method is called
+     * after the Promise has already succeeded the Block is executed immediately.
+     */
     public Promise<T> onSuccess(Block<T> block) {
         addSuccess(block);
         return this;
     }
 
+    /**
+     * If and only if the Promise fails, execute this Block. If this method is called
+     * after the Promise has already failed the Block is executed immediately.
+     */
     public Promise<T> onFailure(Block<Throwable> block) {
         addFailure(block);
         return this;
