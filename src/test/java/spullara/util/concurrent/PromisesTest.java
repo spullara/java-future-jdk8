@@ -193,7 +193,7 @@ public class PromisesTest {
             }
         }).get());
 
-        final Promise<String> result11 = new Promise<>();
+        final Promise<String> result11 = new Promise<String>();
         try {
             promise2.flatMap(new Mapper<String, Promise<String>>() {
                 @Override
