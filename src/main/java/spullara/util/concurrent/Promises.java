@@ -14,7 +14,7 @@ public class Promises {
     static {new Promises();}
 
     public static <T> Promise<T> execute(ExecutorService es, final Callable<T> callable) {
-        final Promise<T> promise = new Promise<>();
+        final Promise<T> promise = new Promise<T>();
         es.submit(new Runnable() {
             @Override
             public void run() {
@@ -29,7 +29,7 @@ public class Promises {
     }
 
     public static <T> Promise<List<T>> collect(List<Promise<T>> promises) {
-        final Promise<List<T>> promiseOfList = new Promise<>();
+        final Promise<List<T>> promiseOfList = new Promise<List<T>>();
         final int size = promises.size();
         final List<T> list = Collections.synchronizedList(new ArrayList<T>(size));
         if (promises.size() == 0) {
