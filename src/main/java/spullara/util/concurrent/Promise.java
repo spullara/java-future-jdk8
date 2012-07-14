@@ -35,9 +35,6 @@ public class Promise<T> implements SettableFuture<T> {
         setException(t);
     }
 
-    // The setters use this to decide who wins
-    private Semaphore set = new Semaphore(1);
-
     /**
      * This semaphore guards whether or not a Promise has already been set.
      */
@@ -75,6 +72,7 @@ public class Promise<T> implements SettableFuture<T> {
      */
     public void set(T value) {
         if (set.tryAcquire()) {
+            successful = true;
             this.value = value;
             read.countDown();
             Block<T> localSuccess = null;
@@ -145,6 +143,10 @@ public class Promise<T> implements SettableFuture<T> {
         return set.availablePermits() == 0;
     }
 
+    @Override
+    public void done() {
+    }
+
     /**
      * Wait until the Promise is satisfied. If it was successful, return the
      * value. If it fails, throw an ExecutionException with the failure throwable
@@ -184,7 +186,7 @@ public class Promise<T> implements SettableFuture<T> {
     private void addSuccess(Block<T> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
-                if (throwable == null) {
+                if (successful) {
                     block.apply(value);
                 }
             } else if (success == null) {
@@ -203,7 +205,7 @@ public class Promise<T> implements SettableFuture<T> {
     private void addFailure(Block<Throwable> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
-                if (throwable != null) {
+                if (!successful) {
                     block.apply(throwable);
                 }
             } else if (failed == null) {

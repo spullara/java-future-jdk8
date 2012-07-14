@@ -2,11 +2,7 @@ package spullara.util;
 
 import org.junit.Test;
 
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.Assert.assertEquals;
@@ -17,8 +13,13 @@ public class LazyTest {
 
     @Test
     public void testLazy() {
-        AtomicInteger ai = new AtomicInteger(0);
-        Lazy<String> lazyString = new Lazy<String>(() -> "Value: " + ai.incrementAndGet());
+        final AtomicInteger ai = new AtomicInteger(0);
+        Lazy<String> lazyString = new Lazy<String>(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                return "Value: " + ai.incrementAndGet();
+            }
+        });
         assertEquals(0, ai.get());
         assertEquals("Value: 1", lazyString.get());
         assertEquals(1, ai.get());
@@ -28,17 +29,25 @@ public class LazyTest {
 
     @Test
     public void testThreadedLazy() throws InterruptedException, ExecutionException {
-        AtomicInteger executions = new AtomicInteger(0);
-        AtomicInteger attempts = new AtomicInteger(0);
-        Lazy<String> lazyString = new Lazy<String>(() -> "Value: " + executions.incrementAndGet());
-        CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM);
+        final AtomicInteger executions = new AtomicInteger(0);
+        final AtomicInteger attempts = new AtomicInteger(0);
+        final Lazy<String> lazyString = new Lazy<String>(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                return "Value: " + executions.incrementAndGet();
+            }
+        });
+        final CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM);
         ExecutorService es = Executors.newCachedThreadPool();
         for (int i = 0; i < NUM; i++) {
-            es.submit(()->{
-                cyclicBarrier.await();
-                assertEquals("Value: 1", lazyString.get());
-                assertEquals(1, executions.get());
-                return attempts.incrementAndGet();
+            es.submit(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    cyclicBarrier.await();
+                    assertEquals("Value: 1", lazyString.get());
+                    assertEquals(1, executions.get());
+                    return attempts.incrementAndGet();
+                }
             });
         }
         es.shutdown();

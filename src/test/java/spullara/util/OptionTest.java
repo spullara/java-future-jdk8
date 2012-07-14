@@ -17,11 +17,17 @@ public class OptionTest {
 
         AtomicInteger ai = new AtomicInteger(0);
 
-        some.forEach( _ -> { ai.incrementAndGet(); });
+        for (String s : some) {
+            ai.incrementAndGet();
+        }
         assertEquals(1, ai.get());
-        none1.forEach(_-> { ai.incrementAndGet(); });
+        for (String s : none1) {
+            ai.incrementAndGet();
+        }
         assertEquals(1, ai.get());
-        none2.forEach(_-> { ai.incrementAndGet(); });
+        for (String s : none2) {
+            ai.incrementAndGet();
+        }
         assertEquals(1, ai.get());
         assertEquals(none1, none2);
     }
