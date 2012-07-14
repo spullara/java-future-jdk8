@@ -193,7 +193,7 @@ public class PromisesTest {
             }
         }).get());
 
-        final Promise<String> promise11 = new Promise<>();
+        final Promise<String> result11 = new Promise<>();
         try {
             promise2.flatMap(new Mapper<String, Promise<String>>() {
                 @Override
@@ -203,12 +203,12 @@ public class PromisesTest {
             }).onFailure(new Block<Throwable>() {
                 @Override
                 public void apply(Throwable throwable) {
-                    promise11.set("Failed");
+                  result11.set("Failed");
                 }
             }).get();
             fail("Should have failed");
         } catch (ExecutionException ee) {
-            assertEquals("Failed", promise11.get());
+            assertEquals("Failed", result11.get());
         }
 
         final Promise<String> result2 = new Promise<>();
