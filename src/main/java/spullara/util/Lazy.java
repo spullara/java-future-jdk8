@@ -5,6 +5,16 @@ import java.util.concurrent.Callable;
 /**
  * Value isn't set until you ask for it and is only
  * calculated once.
+ *
+ * See
+ * http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html
+ *
+ * The section:
+ *
+ * "Fixing Double-Checked Locking using Volatile"
+ *
+ * This is also the same pattern that "lazy val" in Scala uses to
+ * ensure once-and-only-once delayed initialization.
  */
 public class Lazy<T> {
     private volatile boolean set;
