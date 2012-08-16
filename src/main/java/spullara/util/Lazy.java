@@ -16,7 +16,7 @@ public class Lazy<T> {
     }
 
     public T get() {
-        // This access of set should require a memory barrier
+        // This access of set requires a memory barrier
         if (!set) {
             // Now we synchronize to have only a single executor
             synchronized (this) {

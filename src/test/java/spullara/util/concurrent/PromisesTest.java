@@ -38,8 +38,7 @@ public class PromisesTest {
         Promise<String> promise = Promises.execute(es, () -> {Thread.sleep(1000); return "Done.";});
         Promise<String> promise2 = Promises.execute(es, () -> {Thread.sleep(900); return "Done2.";});
         Promise<String> promise3 = new Promise<>("Constant");
-        Promise<String> promise4 = Promises.execute(es, () -> {Thread.sleep(500);
-        throw new RuntimeException("Promise4");});
+        Promise<String> promise4 = Promises.execute(es, () -> {Thread.sleep(500); throw new RuntimeException("Promise4");});
         Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
         Promise<String> promise6 = Promises.execute(es, () -> {executed.set(true); Thread.sleep(1000); return "Done.";});
         promise6.cancel(true);
