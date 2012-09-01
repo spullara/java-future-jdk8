@@ -3,6 +3,7 @@ package spullara.util;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.functions.Mapper;
 
 import static junit.framework.Assert.assertEquals;
 import static spullara.util.Option.none;
@@ -14,6 +15,10 @@ public class OptionTest {
         Option<String> some = option("test");
         Option<String> none1 = none();
         Option<String> none2 = option(null);
+
+        Mapper<String, Option<String>> test = s -> {
+            if (s.equals("")) return Option.<String>none(); else return option(s);
+        };
 
         AtomicInteger ai = new AtomicInteger(0);
 
