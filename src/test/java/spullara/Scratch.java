@@ -1,15 +1,19 @@
 package spullara;
 
-import spullara.util.concurrent.Promise;
+import spullara.util.matching.Extractor;
+
+import static spullara.util.Option.none;
+import static spullara.util.Option.option;
 
 public class Scratch {
-    interface Test<T, V> {
-        T map(V v);
-    }
-
     public static void main(String[] args) {
-        Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
-        promise5.map(v -> null);
+        Extractor<String, Integer> e = s -> {
+            if (s.equals("1")) {
+                return option(1);
+            } else {
+                return none();
+            }
+        };
     }
 }
 

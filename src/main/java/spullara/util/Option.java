@@ -20,6 +20,10 @@ public abstract class Option<T> extends ArrayList<T> {
         return NONE;
     }
 
+    public static <T> Option<T> none(Class<T> c) {
+        return NONE;
+    }
+
     @Override
     public <U> Option<U> map(Mapper<? super T, ? extends U> mapper) {
         Iterable<U> map = super.map(mapper);

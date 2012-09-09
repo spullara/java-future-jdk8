@@ -21,9 +21,8 @@ public class LazyTest {
         Lazy<String> lazyString = new Lazy<String>(() -> "Value: " + ai.incrementAndGet());
         assertEquals(0, ai.get());
         assertEquals("Value: 1", lazyString.get());
-        assertEquals(1, ai.get());
+        assertEquals(2, ai.incrementAndGet());
         assertEquals("Value: 1", lazyString.get());
-        assertEquals(1, ai.get());
     }
 
     @Test
