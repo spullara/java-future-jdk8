@@ -1,17 +1,25 @@
 package spullara.util;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.functions.Mapper;
 
-public abstract class Option<T> extends ArrayList<T> {
+public abstract class Option<T> extends AbstractList<T> {
     private static class None<T> extends Option<T> {
         private None() {
-            super(0);
+            super();
         }
-    }
 
-    protected Option(int i) {
-        super(i);
+        @Override
+        public int size() {
+            return 0;
+        }
+
+        @Override
+        public T get(int index) {
+            throw new ArrayIndexOutOfBoundsException("None has zero elements");
+        }
     }
 
     private static final Option NONE = new None();
