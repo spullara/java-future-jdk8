@@ -1,8 +1,6 @@
 package spullara.util.matching;
 
-import spullara.util.Option;
-
-import java.util.functions.Mapper;
+import java.util.Optional;
 
 /**
 * Created with IntelliJ IDEA.
@@ -12,5 +10,5 @@ import java.util.functions.Mapper;
 * To change this template use File | Settings | File Templates.
 */
 public interface Extractor<T, W> {
-    Option<W> unapply(T t);
+    Optional<W> unapply(T t);
 }

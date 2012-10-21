@@ -1,11 +1,8 @@
 package spullara.util.matching;
 
-import spullara.util.Option;
-
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static spullara.util.Option.option;
 
 /**
  * Common extractors
@@ -15,16 +12,16 @@ public class Extractors {
         Pattern p = Pattern.compile(pattern);
         return s -> {
             Matcher matcher = p.matcher(s);
-            return matcher.matches() ? option(matcher) : Option.<Matcher>none();
+            if (matcher.matches()) return new Optional<>(matcher); else return Optional.empty();
         };
     }
 
     public static Extractor<String, Integer> IntegerExtractor() {
         return s -> {
             try {
-                return option(Integer.parseInt(s));
+                return new Optional<>(Integer.parseInt(s));
             } catch (NumberFormatException nfe) {
-                return Option.<Integer>none();
+                return Optional.empty();
             }
         };
     }
@@ -32,9 +29,9 @@ public class Extractors {
     public static Extractor<String, Long> LongExtractor() {
         return s -> {
             try {
-                return option(Long.parseLong(s));
+                return new Optional<>(Long.parseLong(s));
             } catch (NumberFormatException nfe) {
-                return Option.<Long>none();
+                return Optional.empty();
             }
         };
     }
@@ -42,9 +39,9 @@ public class Extractors {
     public static Extractor<String, Double> DoubleExtractor() {
         return s -> {
             try {
-                return option(Double.parseDouble(s));
+                return new Optional<>(Double.parseDouble(s));
             } catch (NumberFormatException nfe) {
-                return Option.<Double>none();
+                return Optional.empty();
             }
         };
     }

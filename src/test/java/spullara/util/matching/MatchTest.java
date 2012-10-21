@@ -1,32 +1,70 @@
 package spullara.util.matching;
 
 import org.junit.Test;
-import spullara.util.Option;
 
+import java.util.Optional;
+
+import static java.lang.Double.parseDouble;
 import static java.lang.Integer.parseInt;
 import static junit.framework.Assert.assertEquals;
-import static spullara.util.Option.none;
-import static spullara.util.Option.option;
 import static spullara.util.matching.Extractors.RegexExtractor;
 import static spullara.util.matching.Match.match;
+import static spullara.util.matching.Match.or;
 
 public class MatchTest {
 
     @Test
     public void testSimple() {
         Match<String, Integer> matcher = match(
-                (String s) -> s.equals("1") ? option(1) : null, (Integer s) -> 1)
-                .or(s -> s.equals("2") ? option(2) : none(Integer.class), i -> 2)
-                .or(s -> s.equals("3") ? option(3) : Option.<Integer>none(), i -> 3)
+                (String s) -> s.equals("1") ? new Optional<>(1) : null, (Integer s) -> 1)
+                .or(s -> s.equals("2") ? new Optional<>(2) : Optional.<Integer>empty(), i -> 2)
+                .or(s -> s.equals("3") ? new Optional<>(3) : Optional.<Integer>empty(), i -> 3)
                 .or(s -> {
-                    if (s.equals("3")) return option(3); else return null;
-                }, i -> 3)
-                .or(RegexExtractor("[0-9]+"), m -> parseInt(m.group(0)))
+                    if (s.equals("3")) return new Optional<>(3);
+                    else return null;
+                }, i -> 3);
+        or(matcher, RegexExtractor("([0-9]+)\\+([0-9]+)"), m -> parseInt(m.group(1)) + parseInt(m.group(2)));
+        matcher.or(RegexExtractor("[0-9]+"), m -> parseInt(m.group(0)))
                 .orElse(s -> 0);
-        assertEquals(1, (int) matcher.check("1").getOnly());
-        assertEquals(2, (int) matcher.check("2").getOnly());
-        assertEquals(3, (int) matcher.check("3").getOnly());
-        assertEquals(4, (int) matcher.check("4").getOnly());
-        assertEquals(0, (int) matcher.check("a").getOnly());
+        assertEquals(1, (int) matcher.check("1").get());
+        assertEquals(2, (int) matcher.check("2").get());
+        assertEquals(3, (int) matcher.check("3").get());
+        assertEquals(4, (int) matcher.check("4").get());
+        assertEquals(5, (int) matcher.check("2+3").get());
+        assertEquals(0, (int) matcher.check("a").get());
+    }
+
+    @Test
+    public void testCalculator() {
+        String left = "(?<left>[-0-9]*(\\.[0-9]+)?)";
+        String right = "(?<right>[-0-9]*(\\.[0-9]+)?)";
+        String op = "(\\s*(?<op>[\\*\\+\\-\\/])\\s*)";
+        // Handle simple binary operations
+        Match<String, Double> calculator =
+                match(RegexExtractor(left + op + right), m -> {
+                    double l = parseDouble(m.group("left"));
+                    double r = parseDouble(m.group("right"));
+                    switch (m.group("op").charAt(0)) {
+                        case '+':
+                            return l + r;
+                        case '-':
+                            return l - r;
+                        case '*':
+                            return l * r;
+                        case '/':
+                            return l / r;
+                        default:
+                            throw new IllegalArgumentException();
+                    }
+                });
+        // Handle a parenthesized expression
+        calculator.or(RegexExtractor("\\((?<expr>.+)\\)(?<rest>" + op + "?.*)"), m -> calculator.check(calculator.check(m.group("expr")).get() + s(m.group("op")) + s(m.group("rest"))).get())
+                .or(RegexExtractor(left), m -> parseDouble(m.group("left")));
+        assertEquals(5.0, calculator.check("2+3").get());
+        assertEquals(5.0, calculator.check("(2+3)").get());
+    }
+
+    String s(String s) {
+        return s == null ? "" : s;
     }
 }
