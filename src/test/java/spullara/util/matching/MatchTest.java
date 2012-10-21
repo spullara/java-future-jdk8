@@ -58,13 +58,14 @@ public class MatchTest {
                     }
                 });
         // Handle a parenthesized expression
-        calculator.or(RegexExtractor("\\((?<expr>.+)\\)(?<rest>" + op + "?.*)"), m -> calculator.check(calculator.check(m.group("expr")).get() + s(m.group("op")) + s(m.group("rest"))).get())
+        calculator.or(RegexExtractor("\\((?<expr>.+)\\)(?<rest>" + op + "?.*)"), m -> calculator.check(calculator.check(m.group("expr")).get() + s(m.group("rest"))).get())
                 .or(RegexExtractor(left), m -> parseDouble(m.group("left")));
+        assertEquals(25.0, calculator.check("(2+3) * 5").get());
         assertEquals(5.0, calculator.check("2+3").get());
         assertEquals(5.0, calculator.check("(2+3)").get());
     }
 
     String s(String s) {
-        return s == null ? "" : s;
+        return (s.trim() == null || s.equals("")) ? "" : " " + s.trim();
     }
 }
