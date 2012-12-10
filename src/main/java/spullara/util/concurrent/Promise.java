@@ -5,9 +5,8 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.functions.Block;
-import java.util.functions.Blocks;
-import java.util.functions.Mapper;
+import java.util.function.Block;
+import java.util.function.Function;
 
 /**
  * You can use a Promise like an asynchronous callback or you can block
@@ -92,7 +91,7 @@ public class Promise<T> implements SettableFuture<T> {
                 }
             }
             if (localSuccess != null) {
-                localSuccess.apply(value);
+                localSuccess.accept(value);
             }
             done();
         }
@@ -115,7 +114,7 @@ public class Promise<T> implements SettableFuture<T> {
                 }
             }
             if (localFailed != null) {
-                localFailed.apply(throwable);
+                localFailed.accept(throwable);
             }
             done();
         }
@@ -212,12 +211,12 @@ public class Promise<T> implements SettableFuture<T> {
         synchronized (this) {
             if (read.getCount() == 0) {
                 if (successful) {
-                    block.apply(value);
+                    block.accept(value);
                 }
             } else if (success == null) {
                 success = block;
             } else {
-                success = Blocks.chain(success, block);
+                success = success.chain(block);
             }
         }
     }
@@ -231,12 +230,12 @@ public class Promise<T> implements SettableFuture<T> {
         synchronized (this) {
             if (read.getCount() == 0) {
                 if (!successful) {
-                    block.apply(throwable);
+                    block.accept(throwable);
                 }
             } else if (failed == null) {
                 failed = block;
             } else {
-                failed = Blocks.chain(failed, block);
+                failed = failed.chain(block);
             }
         }
     }
@@ -246,10 +245,10 @@ public class Promise<T> implements SettableFuture<T> {
      * successfully, map the value using the mapper and satisfied the returned Promise. If the
      * underlying Promise fails, the return promise fails.
      */
-    public <V> Promise<V> map(Mapper<T, V> mapper) {
+    public <V> Promise<V> map(Function<T, V> mapper) {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
-        addSuccess(v -> { promise.set(mapper.map(v)); });
+        addSuccess(v -> { promise.set(mapper.apply(v)); });
         addFailure(e -> { promise.setException(e); });
         return promise;
     }
@@ -260,11 +259,11 @@ public class Promise<T> implements SettableFuture<T> {
      * returned promise. If either the underlying Promise or the mapped Promise fails, the
      * return Promise fails.
      */
-    public <V> Promise<V> flatMap(Mapper<T, Promise<V>> mapper) {
+    public <V> Promise<V> flatMap(Function<T, Promise<V>> mapper) {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
         addSuccess(value -> {
-           Promise <V> mapped = mapper.map(value);
+           Promise <V> mapped = mapper.apply(value);
            promise.link(mapped);
            mapped.addSuccess(v -> { promise.set(v); });
            mapped.addFailure(e -> { promise.setException(e); });
@@ -357,11 +356,11 @@ public class Promise<T> implements SettableFuture<T> {
      * If the underlying Promise fails, replace the failure with a success by mapping
      * the throwable to a value.
      */
-    public Promise<T> rescue(Mapper<Throwable, T> mapper) {
+    public Promise<T> rescue(Function<Throwable, T> mapper) {
         Promise<T> promise = new Promise<>();
         promise.link(this);
         addSuccess(v -> { promise.set(v); });
-        addFailure(e -> { promise.set(mapper.map(e)); });
+        addFailure(e -> { promise.set(mapper.apply(e)); });
         return promise;
     }
 
@@ -372,7 +371,7 @@ public class Promise<T> implements SettableFuture<T> {
         synchronized (this) {
             if (set.availablePermits() == 1) {
                 if (raise != null) {
-                    raise.apply(e);
+                    raise.accept(e);
                 }
             }
             if (linked != null) {
@@ -391,7 +390,7 @@ public class Promise<T> implements SettableFuture<T> {
             if (raise == null) {
                 raise = block;
             } else {
-                raise = Blocks.chain(raise, block);
+                raise = raise.chain(block);
             }
         }
         return this;

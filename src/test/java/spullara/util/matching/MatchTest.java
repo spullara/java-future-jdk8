@@ -16,11 +16,11 @@ public class MatchTest {
     @Test
     public void testSimple() {
         Match<String, Integer> matcher = match(
-                (String s) -> s.equals("1") ? new Optional<>(1) : null, (Integer s) -> 1)
-                .or(s -> s.equals("2") ? new Optional<>(2) : Optional.<Integer>empty(), i -> 2)
-                .or(s -> s.equals("3") ? new Optional<>(3) : Optional.<Integer>empty(), i -> 3)
+                (String s) -> s.equals("1") ? Optional.of(1) : null, s -> 1)
+                .or(s -> s.equals("2") ? Optional.of(2) : Optional.<Integer>empty(), i -> 2)
+                .or(s -> s.equals("3") ? Optional.of(3) : Optional.<Integer>empty(), i -> 3)
                 .or(s -> {
-                    if (s.equals("3")) return new Optional<>(3);
+                    if (s.equals("3")) return Optional.of(3);
                     else return null;
                 }, i -> 3);
         or(matcher, RegexExtractor("([0-9]+)\\+([0-9]+)"), m -> parseInt(m.group(1)) + parseInt(m.group(2)));

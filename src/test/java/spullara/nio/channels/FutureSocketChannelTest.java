@@ -8,7 +8,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.functions.Block;
+import java.util.function.Block;
 
 public class FutureSocketChannelTest {
     @Test
@@ -19,7 +19,7 @@ public class FutureSocketChannelTest {
         SocketAddress clientSocket = new InetSocketAddress("localhost", 8000);
         final FutureServerSocketChannel fssc = new FutureServerSocketChannel().bind(serverSocket);
         Block<FutureSocketChannel> accepted = new Block<FutureSocketChannel>() {
-            public void apply(FutureSocketChannel fsc) {
+            public void accept(FutureSocketChannel fsc) {
                 fssc.accept().onSuccess(this);
                 ByteBuffer bb = ByteBuffer.allocate(1024);
                 fsc.read(bb).onSuccess(length->{
