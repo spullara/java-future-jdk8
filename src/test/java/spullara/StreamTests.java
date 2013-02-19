@@ -3,7 +3,6 @@ package spullara;
 import org.junit.Test;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static java.lang.Integer.parseInt;
@@ -126,7 +125,7 @@ public class StreamTests {
 
     public static <K1, K2, IN, OUT> Map<K1, Map<K2, OUT>> pivot(Collection<IN> rows, Function<IN, K1> left, Function<IN, K2> top, Function<Collection<IN>, OUT> aggregate) {
         Map<K1, Collection<IN>> leftGroup = rows.stream().collect(groupingBy(left));
-        Map<K1, Map<K2, Collection<IN>>> grid = transformValues(leftGroup, (rs) -> rs.stream().collect(groupingBy(top)));
-        return transformValues(grid, (map) -> transformValues(map, aggregate));
+        Map<K1, Map<K2, Collection<IN>>> grid = transformValues(leftGroup, rs -> rs.stream().collect(groupingBy(top)));
+        return transformValues(grid, map -> transformValues(map, aggregate));
     }
 }

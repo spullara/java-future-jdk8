@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Block;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -74,16 +74,16 @@ public class Promise<T> implements SettableFuture<T> {
 	private volatile boolean successful = false;
 
     /**
-     * Satisfy the Promise with a successful value. This executes all the Blocks associated
+     * Satisfy the Promise with a successful value. This executes all the Consumers associated
      * with "success" in the order they were added to the Promise. We synchronize against
-     * another thread adding more success Blocks.
+     * another thread adding more success Consumers.
      */
     public void set(T value) {
         if (set.tryAcquire()) {
 	        successful = true;
             this.value = value;
             read.countDown();
-            Block<T> localSuccess = null;
+            Consumer<T> localSuccess = null;
             synchronized (this) {
                 if (success != null) {
                     localSuccess = success;
@@ -98,15 +98,15 @@ public class Promise<T> implements SettableFuture<T> {
     }
 
     /**
-     * Satisfy the Promise with a failure throwable. This executes all the Blocks associated
+     * Satisfy the Promise with a failure throwable. This executes all the Consumers associated
      * with "failure" in the order they were added to the Promise. We synchronize against
-     * another thread adding more failure Blocks.
+     * another thread adding more failure Consumers.
      */
     public void setException(Throwable throwable) {
         if (set.tryAcquire()) {
             this.throwable = throwable;
             read.countDown();
-            Block<Throwable> localFailed = null;
+            Consumer<Throwable> localFailed = null;
             synchronized (this) {
                 if (failed != null) {
                     localFailed = failed;
@@ -130,19 +130,19 @@ public class Promise<T> implements SettableFuture<T> {
     private Set<Promise> linked;
 
     /**
-     * Block that is executed when a signal is raised on this Promise.
+     * Consumer that is executed when a signal is raised on this Promise.
      */
-    private Block<Throwable> raise;
+    private Consumer<Throwable> raise;
 
     /**
-     * Block that is executed when this Promise fails.
+     * Consumer that is executed when this Promise fails.
      */
-    private Block<Throwable> failed;
+    private Consumer<Throwable> failed;
 
     /**
-     * Block that is executed when this Promise succeeds.
+     * Consumer that is executed when this Promise succeeds.
      */
-    private Block<T> success;
+    private Consumer<T> success;
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
@@ -203,11 +203,11 @@ public class Promise<T> implements SettableFuture<T> {
     }
 
     /**
-     * This adds an additional Block that is executed when success occurs if the Promise
-     * is not yet satisfied. If it was satisifed successfully we immediately call the Block
+     * This adds an additional Consumer that is executed when success occurs if the Promise
+     * is not yet satisfied. If it was satisifed successfully we immediately call the Consumer
      * with the resulting value.
      */
-    private void addSuccess(Block<T> block) {
+    private void addSuccess(Consumer<T> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
                 if (successful) {
@@ -222,11 +222,11 @@ public class Promise<T> implements SettableFuture<T> {
     }
 
     /**
-     * This adds an additional Block that is executed when failure occurs if the Promise
-     * is not yet satisfied. If it has already failed we immediately call the Block with
+     * This adds an additional Consumer that is executed when failure occurs if the Promise
+     * is not yet satisfied. If it has already failed we immediately call the Consumer with
      * the resulting throwable.
      */
-    private void addFailure(Block<Throwable> block) {
+    private void addFailure(Consumer<Throwable> block) {
         synchronized (this) {
             if (read.getCount() == 0) {
                 if (!successful) {
@@ -307,12 +307,12 @@ public class Promise<T> implements SettableFuture<T> {
         promise.link(promiseB);
         AtomicBoolean done = new AtomicBoolean();
         AtomicBoolean failed = new AtomicBoolean();
-        Block<T> success = v -> {
+        Consumer<T> success = v -> {
             if (done.compareAndSet(false, true)) {
                 promise.set(v);
             }
         };
-        Block<Throwable> fail = e -> {
+        Consumer<Throwable> fail = e -> {
             if (!failed.compareAndSet(false, true)) {
                 promise.setException(e);
             }
@@ -325,19 +325,19 @@ public class Promise<T> implements SettableFuture<T> {
     }
 
     /**
-     * If and only if the Promise succeeds, execute this Block. If this method is called
-     * after the Promise has already succeeded the Block is executed immediately.
+     * If and only if the Promise succeeds, execute this Consumer. If this method is called
+     * after the Promise has already succeeded the Consumer is executed immediately.
      */
-    public Promise<T> onSuccess(Block<T> block) {
+    public Promise<T> onSuccess(Consumer<T> block) {
         addSuccess(block);
         return this;
     }
 
     /**
-     * If and only if the Promise fails, execute this Block. If this method is called
-     * after the Promise has already failed the Block is executed immediately.
+     * If and only if the Promise fails, execute this Consumer. If this method is called
+     * after the Promise has already failed the Consumer is executed immediately.
      */
-    public Promise<T> onFailure(Block<Throwable> block) {
+    public Promise<T> onFailure(Consumer<Throwable> block) {
         addFailure(block);
         return this;
     }
@@ -383,9 +383,9 @@ public class Promise<T> implements SettableFuture<T> {
     }
 
     /**
-     * If there is a signal raised on this Promise after the block is added, execute this Block.
+     * If there is a signal raised on this Promise after the block is added, execute this Consumer.
      */
-    public Promise<T> onRaise(Block<Throwable> block) {
+    public Promise<T> onRaise(Consumer<Throwable> block) {
         synchronized (this) {
             if (raise == null) {
                 raise = block;

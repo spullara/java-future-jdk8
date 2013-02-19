@@ -2,10 +2,10 @@ package spullara.util.matching;
 
 import org.junit.Test;
 
-import java.util.Optional;
-
 import static java.lang.Double.parseDouble;
 import static java.lang.Integer.parseInt;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static junit.framework.Assert.assertEquals;
 import static spullara.util.matching.Extractors.RegexExtractor;
 import static spullara.util.matching.Match.match;
@@ -16,11 +16,11 @@ public class MatchTest {
     @Test
     public void testSimple() {
         Match<String, Integer> matcher = match(
-                (String s) -> s.equals("1") ? Optional.of(1) : null, s -> 1)
-                .or(s -> s.equals("2") ? Optional.of(2) : Optional.<Integer>empty(), i -> 2)
-                .or(s -> s.equals("3") ? Optional.of(3) : Optional.<Integer>empty(), i -> 3)
+                (String s) -> s.equals("1") ? of(1) : null, s -> 1)
+                .or(s -> s.equals("2") ? of(2) : empty(), i -> 2)
+                .or(s -> s.equals("3") ? of(3) : empty(), i -> 3)
                 .or(s -> {
-                    if (s.equals("3")) return Optional.of(3);
+                    if (s.equals("3")) return of(3);
                     else return null;
                 }, i -> 3);
         or(matcher, RegexExtractor("([0-9]+)\\+([0-9]+)"), m -> parseInt(m.group(1)) + parseInt(m.group(2)));

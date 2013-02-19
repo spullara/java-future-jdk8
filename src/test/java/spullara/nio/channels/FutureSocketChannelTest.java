@@ -8,7 +8,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Block;
+import java.util.function.Consumer;
 
 public class FutureSocketChannelTest {
     @Test
@@ -18,11 +18,11 @@ public class FutureSocketChannelTest {
         SocketAddress serverSocket = new InetSocketAddress(8000);
         SocketAddress clientSocket = new InetSocketAddress("localhost", 8000);
         final FutureServerSocketChannel fssc = new FutureServerSocketChannel().bind(serverSocket);
-        Block<FutureSocketChannel> accepted = new Block<FutureSocketChannel>() {
+        Consumer<FutureSocketChannel> accepted = new Consumer<FutureSocketChannel>() {
             public void accept(FutureSocketChannel fsc) {
                 fssc.accept().onSuccess(this);
                 ByteBuffer bb = ByteBuffer.allocate(1024);
-                fsc.read(bb).onSuccess(length->{
+                fsc.read(bb).onSuccess(length -> {
                     bb.flip();
                     fsc.write(bb);
                     fsc.close();
@@ -31,10 +31,10 @@ public class FutureSocketChannelTest {
         };
         fssc.accept().onSuccess(accepted);
         FutureSocketChannel fsc = new FutureSocketChannel();
-        fsc.connect(clientSocket).onSuccess(v->{
-            fsc.write(ByteBuffer.wrap("hello".getBytes())).onSuccess(sent->{
+        fsc.connect(clientSocket).onSuccess(v -> {
+            fsc.write(ByteBuffer.wrap("hello".getBytes())).onSuccess(sent -> {
                 ByteBuffer readBuffer = ByteBuffer.allocate(sent);
-                fsc.read(readBuffer).onSuccess(recv->{
+                fsc.read(readBuffer).onSuccess(recv -> {
                     readBuffer.flip();
                     result.set(new String(readBuffer.array()));
                     latch.countDown();
