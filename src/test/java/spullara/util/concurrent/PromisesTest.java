@@ -16,7 +16,7 @@ public class PromisesTest {
 
     public static void main(String[] args) throws Exception {
         PromisesTest pt = new PromisesTest();
-        pt.setup();
+        setup();
         pt.testPromises();
         System.out.println("Success.");
     }
@@ -52,7 +52,7 @@ public class PromisesTest {
 
         Promise<String> result10 = new Promise<>();
         try {
-            promise4.onFailure(e -> { result10.set("Failed"); }).get(0, TimeUnit.SECONDS);
+            promise4.onFailure(e -> result10.set("Failed")).get(0, TimeUnit.SECONDS);
             fail("Didn't timeout");
         } catch (TimeoutException te) {
         }
@@ -92,12 +92,8 @@ public class PromisesTest {
                 return "Interrupted";
         });
         Promise<Pair<String, String>> join = promise3.join(onraise);
-        onraise.onRaise(e -> {
-                monitor.countDown();
-        });
-        onraise.onRaise(e -> {
-                monitor.countDown();
-        });
+        onraise.onRaise(e -> monitor.countDown());
+        onraise.onRaise(e -> monitor.countDown());
 
         Promise<String> map = promise.map(v -> "Set1: " + v).map(v -> {
                 join.raise(new CancellationException());
@@ -142,13 +138,13 @@ public class PromisesTest {
 
         Promise<String> result5 = new Promise<>();
         Promise<String> result6 = new Promise<>();
-        promise.onSuccess(s -> { result5.set("onSuccess: " + s); }).onFailure(e -> result5.set("onFailure: " + e)).ensure(() -> { result6.set("Ensured"); });
+        promise.onSuccess(s -> result5.set("onSuccess: " + s)).onFailure(e -> result5.set("onFailure: " + e)).ensure(() -> result6.set("Ensured"));
         assertEquals("onSuccess: Done.", result5.get());
         assertEquals("Ensured", result6.get());
 
         Promise<String> result7 = new Promise<>();
         Promise<String> result8 = new Promise<>();
-        promise4.onSuccess(s -> { result7.set("onSuccess: " + s); }).onFailure(e -> result7.set("onFailure: " + e)).ensure(() -> { result8.set("Ensured"); });
+        promise4.onSuccess(s -> result7.set("onSuccess: " + s)).onFailure(e -> result7.set("onFailure: " + e)).ensure(() -> result8.set("Ensured"));
         assertEquals("onFailure: java.lang.RuntimeException: Promise4", result7.get());
         assertEquals("Ensured", result8.get());
 
@@ -156,7 +152,7 @@ public class PromisesTest {
         assertEquals("Was Constant", promise3.rescue(e -> "Rescued!").map(v -> "Was " + v).get());
 
         assertEquals(Arrays.asList("Done.", "Done2.", "Constant"), Promises.collect(Arrays.asList(promise, promise2, promise3)).get());
-        assertEquals(Arrays.asList(), Promises.collect(new ArrayList<Promise<String>>()).get());
+        assertEquals(Arrays.<String>asList(), Promises.collect(new ArrayList<Promise<String>>()).get());
         try {
             assertEquals(Arrays.asList("Done.", "Done2.", "Constant"), Promises.collect(Arrays.asList(promise, promise4, promise3)).get());
             fail("Didn't fail");
@@ -164,7 +160,7 @@ public class PromisesTest {
         }
 
         Promise<String> result9 = new Promise<>();
-        promise.onSuccess(v -> { result9.set("onSuccess: " + v); });
+        promise.onSuccess(v -> result9.set("onSuccess: " + v));
         assertEquals("onSuccess: Done.", result9.get());
 
         es.shutdown();
