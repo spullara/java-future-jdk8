@@ -249,7 +249,7 @@ public class Promise<T> implements SettableFuture<T> {
         Promise<V> promise = new Promise<V>();
         promise.link(this);
         addSuccess(v -> { promise.set(mapper.apply(v)); });
-        addFailure(e -> { promise.setException(e); });
+        addFailure(promise::setException);
         return promise;
     }
 
@@ -265,10 +265,10 @@ public class Promise<T> implements SettableFuture<T> {
         addSuccess(value -> {
            Promise <V> mapped = mapper.apply(value);
            promise.link(mapped);
-           mapped.addSuccess(v -> { promise.set(v); });
-           mapped.addFailure(e -> { promise.setException(e); });
+           mapped.addSuccess(promise::set);
+           mapped.addFailure(promise::setException);
         });
-        addFailure(e -> { promise.setException(e); });
+        addFailure(promise::setException);
         return promise;
     }
 
@@ -292,8 +292,8 @@ public class Promise<T> implements SettableFuture<T> {
                 promise.set(new Pair<>((T) ref.get(), v));
             }
         });
-        addFailure(e -> { promise.setException(e); });
-        promiseB.addFailure(e -> { promise.setException(e); });
+        addFailure(promise::setException);
+        promiseB.addFailure(promise::setException);
         return promise;
     }
 
@@ -347,8 +347,8 @@ public class Promise<T> implements SettableFuture<T> {
      * been satisifed, execute the Runnable immediately.
      */
     public Promise<T> ensure(Runnable runnable) {
-        addSuccess(v -> { runnable.run(); });
-        addFailure(e -> { runnable.run(); });
+        addSuccess(v -> runnable.run());
+        addFailure(e -> runnable.run());
         return this;
     }
 
@@ -359,8 +359,8 @@ public class Promise<T> implements SettableFuture<T> {
     public Promise<T> rescue(Function<Throwable, T> mapper) {
         Promise<T> promise = new Promise<>();
         promise.link(this);
-        addSuccess(v -> { promise.set(v); });
-        addFailure(e -> { promise.set(mapper.apply(e)); });
+        addSuccess(promise::set);
+        addFailure(e -> promise.set(mapper.apply(e)));
         return promise;
     }
 
