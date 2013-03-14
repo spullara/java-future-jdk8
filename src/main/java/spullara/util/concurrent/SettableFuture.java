@@ -10,9 +10,6 @@ public interface SettableFuture<T> extends Future<T> {
      * Sets the result of this future to the given value unless
      * this future has already been set or has been cancelled.
      *
-     * <p>This method is invoked internally by the {@link #run} method
-     * upon successful completion of the computation.
-     *
      * @param value the value
      */
     void set(T value);
@@ -22,10 +19,7 @@ public interface SettableFuture<T> extends Future<T> {
      * with the given throwable as its cause, unless this future has
      * already been set or has been cancelled.
      *
-     * <p>This method is invoked internally by the {@link #run} method
-     * upon failure of the computation.
-     *
-     * @param t the cause of failure
+     * @param throwable the cause of failure
      */
     void setException(Throwable throwable);
 
