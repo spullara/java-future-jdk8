@@ -246,10 +246,10 @@ public class Promise<T> implements SettableFuture<T> {
      * underlying Promise fails, the return promise fails.
      */
     public <V> Promise<V> map(Function<T, V> mapper) {
-        Promise<V> promise = new Promise<V>();
+        Promise<V> promise = new Promise<>();
         promise.link(this);
-        addSuccess(v -> { promise.set(mapper.apply(v)); });
-        addFailure(e -> { promise.setException(e); });
+        addSuccess(v -> promise.set(mapper.apply(v)));
+        addFailure(promise::setException);
         return promise;
     }
 
@@ -260,15 +260,15 @@ public class Promise<T> implements SettableFuture<T> {
      * return Promise fails.
      */
     public <V> Promise<V> flatMap(Function<T, Promise<V>> mapper) {
-        Promise<V> promise = new Promise<V>();
+        Promise<V> promise = new Promise<>();
         promise.link(this);
         addSuccess(value -> {
            Promise <V> mapped = mapper.apply(value);
            promise.link(mapped);
-           mapped.addSuccess(v -> { promise.set(v); });
-           mapped.addFailure(e -> { promise.setException(e); });
+           mapped.addSuccess(promise::set);
+           mapped.addFailure(promise::setException);
         });
-        addFailure(e -> { promise.setException(e); });
+        addFailure(promise::setException);
         return promise;
     }
 
@@ -277,6 +277,7 @@ public class Promise<T> implements SettableFuture<T> {
      * The returned Promise succeeds if both the Promises succeed. If either Promise fails
      * the returned Promise also fails.
      */
+    @SuppressWarnings("unchecked")
     public <B> Promise<Pair<T, B>> join(Promise<B> promiseB) {
         Promise<Pair<T, B>> promise = new Promise<>();
         promise.link(this);
@@ -292,8 +293,8 @@ public class Promise<T> implements SettableFuture<T> {
                 promise.set(new Pair<>((T) ref.get(), v));
             }
         });
-        addFailure(e -> { promise.setException(e); });
-        promiseB.addFailure(e -> { promise.setException(e); });
+        addFailure(promise::setException);
+        promiseB.addFailure(promise::setException);
         return promise;
     }
 
@@ -347,8 +348,8 @@ public class Promise<T> implements SettableFuture<T> {
      * been satisifed, execute the Runnable immediately.
      */
     public Promise<T> ensure(Runnable runnable) {
-        addSuccess(v -> { runnable.run(); });
-        addFailure(e -> { runnable.run(); });
+        addSuccess(v -> runnable.run());
+        addFailure(e -> runnable.run());
         return this;
     }
 
@@ -359,8 +360,8 @@ public class Promise<T> implements SettableFuture<T> {
     public Promise<T> rescue(Function<Throwable, T> mapper) {
         Promise<T> promise = new Promise<>();
         promise.link(this);
-        addSuccess(v -> { promise.set(v); });
-        addFailure(e -> { promise.set(mapper.apply(e)); });
+        addSuccess(promise::set);
+        addFailure(e -> promise.set(mapper.apply(e)));
         return promise;
     }
 

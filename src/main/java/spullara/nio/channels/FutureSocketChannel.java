@@ -24,11 +24,12 @@ public class FutureSocketChannel {
         try {
             asc.close();
         } catch (IOException e) {
+            // Ignore
         }
     }
 
     public Promise<Void> connect(SocketAddress sa) {
-        Promise<Void> connector = new Promise<Void>();
+        Promise<Void> connector = new Promise<>();
         asc.connect(sa, connector, new CompletionHandler<Void, Promise<Void>>() {
             public void completed(Void v1, Promise<Void> connector) {
                 connector.set(null);
@@ -42,7 +43,7 @@ public class FutureSocketChannel {
     }
 
     public Promise<Integer> read(ByteBuffer buffer) {
-        Promise<Integer> reader = new Promise<Integer>();
+        Promise<Integer> reader = new Promise<>();
         asc.read(buffer, reader, new CompletionHandler<Integer, Promise<Integer>>() {
             public void completed(Integer length, Promise<Integer> reader) {
                 reader.set(length);
@@ -56,7 +57,7 @@ public class FutureSocketChannel {
     }
 
     public Promise<Integer> write(ByteBuffer buffer) {
-        Promise<Integer> writer = new Promise<Integer>();
+        Promise<Integer> writer = new Promise<>();
         asc.write(buffer, writer, new CompletionHandler<Integer, Promise<Integer>>() {
             public void completed(Integer length, Promise<Integer> writer) {
                 writer.set(length);

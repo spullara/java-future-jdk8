@@ -11,7 +11,7 @@ public class Pair<T, V> {
 
     @Override
     public int hashCode() {
-        return _1.hashCode() + 43*_2.hashCode();
+        return _1.hashCode() + 43 * _2.hashCode();
     }
 
     @Override

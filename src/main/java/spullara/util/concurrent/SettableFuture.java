@@ -13,7 +13,7 @@ public interface SettableFuture<T> extends Future<T> {
      * <p>This method is invoked internally by the {@link #run} method
      * upon successful completion of the computation.
      *
-     * @param v the value
+     * @param value the value
      */
     void set(T value);
 

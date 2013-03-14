@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 public class FutureSocketChannelTest {
     @Test
     public void testEchoServer() throws Exception {
-        final AtomicReference<String> result = new AtomicReference<String>();
+        final AtomicReference<String> result = new AtomicReference<>();
         final CountDownLatch latch = new CountDownLatch(1);
         SocketAddress serverSocket = new InetSocketAddress(8000);
         SocketAddress clientSocket = new InetSocketAddress("localhost", 8000);

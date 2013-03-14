@@ -10,7 +10,7 @@ public class Promises {
 
     public static <T> Promise<T> execute(ExecutorService es, Callable<T> callable) {
         Promise<T> promise = new Promise<>();
-        es.submit(()->{
+        es.submit(() -> {
             try {
                 if (!promise.isCancelled()) {
                     promise.set(callable.call());
@@ -25,19 +25,17 @@ public class Promises {
     public static <T> Promise<? extends List<T>> collect(List<Promise<T>> promises) {
         Promise<List<T>> promiseOfList = new Promise<>();
         int size = promises.size();
-        List<T> list = Collections.synchronizedList(new ArrayList<T>(size));
+        List<T> list = Collections.synchronizedList(new ArrayList<>(size));
         if (promises.size() == 0) {
             promiseOfList.set(list);
         } else {
             for (Promise<T> promise : promises) {
-                promise.onSuccess(v->{
+                promise.onSuccess(v -> {
                     list.add(v);
                     if (list.size() == size) {
                         promiseOfList.set(list);
                     }
-                }).onFailure(e->{
-                    promiseOfList.setException(e);
-                });
+                }).onFailure(promiseOfList::setException);
             }
         }
         return promiseOfList;
