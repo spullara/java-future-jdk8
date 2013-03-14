@@ -52,6 +52,8 @@ public class PromisesTest {
         });
         promise6.cancel(true);
 
+        Promise<String> selected = Promises.select(promise, promise2, promise4, promise5);
+
         try {
             assertTrue(promise6.isCancelled());
             assertTrue(promise6.isDone());
@@ -82,6 +84,7 @@ public class PromisesTest {
         promise2.select(promise).onSuccess(v -> result4.set("Selected: " + v));
         assertEquals("Selected: Done2.", result3.get());
         assertEquals("Selected: Done2.", result4.get());
+        assertEquals("Done2.", selected.get());
 
         Promise<String> map1 = promise.join(promise2).map(value -> value._1 + ", " + value._2);
         Promise<String> map2 = promise2.join(promise).map(value -> value._1 + ", " + value._2);

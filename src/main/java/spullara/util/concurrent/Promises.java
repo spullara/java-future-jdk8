@@ -1,10 +1,13 @@
 package spullara.util.concurrent;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Promises {
 
@@ -39,5 +42,25 @@ public class Promises {
             }
         }
         return promiseOfList;
+    }
+
+    @SafeVarargs
+    public static <T> Promise<T> select(Promise<T>... promises) {
+        AtomicInteger ai = new AtomicInteger(promises.length);
+        AtomicBoolean done = new AtomicBoolean();
+        Promise<T> promise = new Promise<>();
+        for (Promise<T> p : promises) {
+            p.onSuccess(t -> {
+                if (done.compareAndSet(false, true)) {
+                    promise.set(t);
+                }
+            });
+            p.onFailure(th -> {
+                if (ai.decrementAndGet() == 0) {
+                    promise.setException(th);
+                }
+            });
+        }
+        return promise;
     }
 }
