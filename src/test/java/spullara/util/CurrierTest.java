@@ -28,7 +28,7 @@ public class CurrierTest {
     @Test
     public void curryTwoToOne() {
         Map<String, Integer> map = new HashMap<>();
-        Currier.C1<Integer, Integer> c1 = curry(map::put, "test");
+      Currier.C1<Integer, Integer> c1 = curry(map::put, "test");
         c1.invoke(1);
         assertEquals(1, map.get("test").intValue());
     }
