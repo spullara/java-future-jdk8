@@ -2,15 +2,21 @@ package spullara.util.concurrent;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+import spullara.util.Benchmarker;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.util.Arrays.asList;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static spullara.util.concurrent.Promises.collect;
+import static spullara.util.concurrent.Promises.execute;
+import static spullara.util.concurrent.Promises.select;
 
 public class PromisesTest {
 
@@ -25,34 +31,34 @@ public class PromisesTest {
 
     @BeforeClass
     public static void setup() {
-        es = Executors.newCachedThreadPool();
+        es = ForkJoinPool.commonPool();
     }
 
     @Test
     public void testPromises() throws Exception {
         AtomicBoolean executed = new AtomicBoolean(false);
-        Promise<String> promise = Promises.execute(es, () -> {
+        Promise<String> promise = execute(es, () -> {
             Thread.sleep(1000);
             return "Done.";
         });
-        Promise<String> promise2 = Promises.execute(es, () -> {
+        Promise<String> promise2 = execute(es, () -> {
             Thread.sleep(900);
             return "Done2.";
         });
         Promise<String> promise3 = new Promise<>("Constant");
-        Promise<String> promise4 = Promises.execute(es, () -> {
+        Promise<String> promise4 = execute(es, () -> {
             Thread.sleep(500);
             throw new RuntimeException("Promise4");
         });
         Promise<String> promise5 = new Promise<>(new RuntimeException("Promise5"));
-        Promise<String> promise6 = Promises.execute(es, () -> {
+        Promise<String> promise6 = execute(es, () -> {
             executed.set(true);
             Thread.sleep(1000);
             return "Done.";
         });
         promise6.cancel(true);
 
-        Promise<String> selected = Promises.select(promise, promise2, promise4, promise5);
+        Promise<String> selected = select(promise, promise2, promise4, promise5);
 
         try {
             assertTrue(promise6.isCancelled());
@@ -103,7 +109,7 @@ public class PromisesTest {
         }
 
         final CountDownLatch monitor = new CountDownLatch(2);
-        Promise<String> onraise = Promises.execute(es, () -> {
+        Promise<String> onraise = execute(es, () -> {
             monitor.await();
             return "Interrupted";
         });
@@ -154,23 +160,27 @@ public class PromisesTest {
 
         Promise<String> result5 = new Promise<>();
         Promise<String> result6 = new Promise<>();
-        promise.onSuccess(s -> result5.set("onSuccess: " + s)).onFailure(e -> result5.set("onFailure: " + e)).ensure(() -> result6.set("Ensured"));
+        promise.onSuccess(s -> result5.set("onSuccess: " + s))
+                .onFailure(e -> result5.set("onFailure: " + e))
+                .ensure(() -> result6.set("Ensured"));
         assertEquals("onSuccess: Done.", result5.get());
         assertEquals("Ensured", result6.get());
 
         Promise<String> result7 = new Promise<>();
         Promise<String> result8 = new Promise<>();
-        promise4.onSuccess(s -> result7.set("onSuccess: " + s)).onFailure(e -> result7.set("onFailure: " + e)).ensure(() -> result8.set("Ensured"));
+        promise4.onSuccess(s -> result7.set("onSuccess: " + s))
+                .onFailure(e -> result7.set("onFailure: " + e))
+                .ensure(() -> result8.set("Ensured"));
         assertEquals("onFailure: java.lang.RuntimeException: Promise4", result7.get());
         assertEquals("Ensured", result8.get());
 
         assertEquals("Was Rescued!", promise4.rescue(e -> "Rescued!").map(v -> "Was " + v).get());
         assertEquals("Was Constant", promise3.rescue(e -> "Rescued!").map(v -> "Was " + v).get());
 
-        assertEquals(Arrays.asList("Done.", "Done2.", "Constant"), Promises.collect(Arrays.asList(promise, promise2, promise3)).get());
-        assertEquals(Arrays.<String>asList(), Promises.collect(new ArrayList<Promise<String>>()).get());
+        assertEquals(asList("Done.", "Done2.", "Constant"), collect(asList(promise, promise2, promise3)).get());
+        assertEquals(Arrays.<String>asList(), collect(new ArrayList<Promise<String>>()).get());
         try {
-            assertEquals(Arrays.asList("Done.", "Done2.", "Constant"), Promises.collect(Arrays.asList(promise, promise4, promise3)).get());
+            assertEquals(asList("Done.", "Done2.", "Constant"), collect(asList(promise, promise4, promise3)).get());
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
@@ -180,5 +190,82 @@ public class PromisesTest {
         assertEquals("onSuccess: Done.", result9.get());
 
         es.shutdown();
+    }
+
+    void run(Runnable run) {
+        run.run();
+    }
+
+    @Test
+    public void testCompletableFuture() throws Exception {
+        Benchmarker bm = new Benchmarker(100000);
+        Semaphore s = new Semaphore(1);
+
+        bm.execute("No futures or lambdas", () -> {
+            s.acquireUninterruptibly();
+            s.release();
+        });
+
+        bm.execute("No futures", () -> {
+            s.acquireUninterruptibly();
+            run(s::release);
+        });
+
+        bm.execute("Just executor", () -> {
+            es.submit(() -> {
+                s.acquireUninterruptibly();
+                s.release();
+            }).get();
+        });
+
+        bm.execute("Pure promise", () -> {
+            s.acquireUninterruptibly();
+            Promise<String> objectPromise = new Promise<>();
+            objectPromise.onSuccess(t -> s.release());
+            objectPromise.set("Done");
+        });
+
+        bm.execute("Pure completable", () -> {
+            s.acquireUninterruptibly();
+            CompletableFuture<Object> objectCompletableFuture = new CompletableFuture<>();
+            objectCompletableFuture.thenAccept(t -> s.release());
+            objectCompletableFuture.complete("Done");
+        });
+
+        bm.execute("Acquire after promise", () -> {
+            Promise<String> promise = Promises.execute(es, () -> "Test");
+            s.acquireUninterruptibly();
+            promise.onSuccess(t -> s.release());
+        });
+
+        bm.execute("Acquire after promise async", () -> {
+            Promise<String> promise = Promises.execute(es, () -> "Test");
+            s.acquireUninterruptibly();
+            promise.onSuccess(t -> es.submit(s::release));
+        });
+
+        bm.execute("Acquire after completable", () -> {
+            CompletableFuture<String> completableFuture = supplyAsync(() -> "Test", es);
+            s.acquireUninterruptibly();
+            completableFuture.thenAccept(t -> s.release());
+        });
+
+        bm.execute("Acquire after completable async", () -> {
+            CompletableFuture<String> completableFuture = supplyAsync(() -> "Test", es);
+            s.acquireUninterruptibly();
+            completableFuture.thenAcceptAsync(t -> s.release(), es);
+        });
+
+        bm.execute("Acquire before promise", () -> {
+            s.acquireUninterruptibly();
+            execute(es, () -> "Test").onSuccess(t -> s.release());
+        });
+
+        bm.execute("Acquire before completable", () -> {
+            s.acquireUninterruptibly();
+            supplyAsync(() -> "Test", es).thenAccept(t -> s.release());
+        });
+
+        bm.report();
     }
 }

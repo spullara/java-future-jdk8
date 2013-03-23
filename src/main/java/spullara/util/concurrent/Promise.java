@@ -12,7 +12,7 @@ import java.util.function.Function;
  * You can use a Promise like an asynchronous callback or you can block
  * on it like you would a Future. Callbacks are executed:
  * 1. In the thread that sets the promise, if it wasn't satisfied when
- *    the callback was added.
+ * the callback was added.
  * 2. In the caller thread, if it was satisfied when the callback is added.
  * You should never block in the callback. If you need to do more work that does
  * block you should again use a Promise and flatMap.
@@ -68,10 +68,10 @@ public class Promise<T> implements SettableFuture<T> {
      */
     private Throwable throwable;
 
-	/**
-	 * Successful
-	 */
-	private volatile boolean successful = false;
+    /**
+     * Successful
+     */
+    private volatile boolean successful = false;
 
     /**
      * Satisfy the Promise with a successful value. This executes all the Consumers associated
@@ -80,15 +80,17 @@ public class Promise<T> implements SettableFuture<T> {
      */
     public void set(T value) {
         if (set.tryAcquire()) {
-	        successful = true;
-            this.value = value;
-            read.countDown();
-            Consumer<T> localSuccess = null;
+            Consumer<T> localSuccess;
             synchronized (this) {
+                successful = true;
+                this.value = value;
                 if (success != null) {
                     localSuccess = success;
                     success = null;
+                } else {
+                    localSuccess = null;
                 }
+                read.countDown();
             }
             if (localSuccess != null) {
                 localSuccess.accept(value);
@@ -263,10 +265,10 @@ public class Promise<T> implements SettableFuture<T> {
         Promise<V> promise = new Promise<>();
         promise.link(this);
         addSuccess(value -> {
-           Promise <V> mapped = mapper.apply(value);
-           promise.link(mapped);
-           mapped.addSuccess(promise::set);
-           mapped.addFailure(promise::setException);
+            Promise<V> mapped = mapper.apply(value);
+            promise.link(mapped);
+            mapped.addSuccess(promise::set);
+            mapped.addFailure(promise::setException);
         });
         addFailure(promise::setException);
         return promise;

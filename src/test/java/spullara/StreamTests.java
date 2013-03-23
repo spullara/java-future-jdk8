@@ -3,13 +3,21 @@ package spullara;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStatistics;
+import java.util.stream.Streams;
 
 import static java.lang.Integer.parseInt;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.groupingReduce;
+import static java.util.stream.Collectors.*;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
+import static spullara.util.Gater.gate;
+import static spullara.util.Gater.gated;
 
 /**
  * TODO: Edit this
@@ -28,7 +36,7 @@ public class StreamTests {
         numbers.put("four", "4");
         Map<String, Integer> collect = numbers.entrySet().stream().collect(
                 HashMap::new,
-                (map, entry) ->  map.put(entry.getKey(), parseInt(entry.getValue())),
+                (map, entry) -> map.put(entry.getKey(), parseInt(entry.getValue())),
                 Map::putAll
         );
         assertEquals(1, collect.get("one").intValue());
@@ -54,7 +62,7 @@ public class StreamTests {
         numbers.put("two", "2");
         numbers.put("three", "3");
         numbers.put("four", "4");
-        Map<Boolean, Collection<Map.Entry<String, String>>> collect = numbers.entrySet().stream().collect(
+        Map<Boolean, List<Map.Entry<String, String>>> collect = numbers.entrySet().stream().collect(
                 groupingBy((entry) -> parseInt(entry.getValue()) <= 2)
         );
         assertEquals(2, collect.get(true).size());
@@ -81,6 +89,7 @@ public class StreamTests {
             this.units = units;
             this.price = price;
         }
+
         final String region;
         final String gender;
         final String style;
@@ -112,8 +121,10 @@ public class StreamTests {
         rows.add(new Row("West", "Girl", "Golf", 10, 24.00));
 
         // groupBy region and gender, summing total sales
-        Map<String, Map<String, Double>> pivot = rows.stream().collect(groupingBy(r -> r.region,
-                groupingReduce(r -> r.gender, r -> r.price * r.units, Double::sum)));
+        Map<String, Map<String, DoubleStatistics>> pivot = rows.stream().collect(
+                groupingBy(r -> r.region,
+                        groupingBy(r -> r.gender,
+                                toDoubleStatistics(r -> r.price * r.units))));
         System.out.println(pivot);
     }
 
@@ -123,9 +134,17 @@ public class StreamTests {
                 Map::putAll);
     }
 
-    public static <K1, K2, IN, OUT> Map<K1, Map<K2, OUT>> pivot(Collection<IN> rows, Function<IN, K1> left, Function<IN, K2> top, Function<Collection<IN>, OUT> aggregate) {
-        Map<K1, Collection<IN>> leftGroup = rows.stream().collect(groupingBy(left));
-        Map<K1, Map<K2, Collection<IN>>> grid = transformValues(leftGroup, rs -> rs.stream().collect(groupingBy(top)));
-        return transformValues(grid, map -> transformValues(map, aggregate));
+    @Test
+    public void testGater() {
+        Collector<String, List<String>> collector = toList();
+        gated(() -> {
+            Streams.intRange(1, 100000).boxed().parallel()
+                    .peek(System.out::println)
+                    .filter(gate(t -> t < 4))
+                    .map(t -> "Num: " + t)
+                    .collect(collector);
+        });
+        BiFunction<List<String>, String, List<String>> accumulator = collector.accumulator();
+        System.out.println(accumulator.apply(new ArrayList<String>(), ""));
     }
 }
