@@ -4,12 +4,8 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.DoubleStatistics;
 import java.util.stream.Streams;
 
 import static java.lang.Integer.parseInt;
@@ -121,15 +117,15 @@ public class StreamTests {
         rows.add(new Row("West", "Girl", "Golf", 10, 24.00));
 
         // groupBy region and gender, summing total sales
-        Map<String, Map<String, DoubleStatistics>> pivot = rows.stream().collect(
+        Map<String, Map<String, DoubleSummaryStatistics>> pivot = rows.stream().collect(
                 groupingBy(r -> r.region,
                         groupingBy(r -> r.gender,
-                                toDoubleStatistics(r -> r.price * r.units))));
+                                toDoubleSummaryStatistics(r -> r.price * r.units))));
         System.out.println(pivot);
     }
 
     public static <K, V, W> Map<K, W> transformValues(Map<K, V> oldmap, Function<V, W> transform) {
-        return oldmap.entrySet().stream().collect(HashMap::new,
+        return oldmap.entrySet().stream().collect(HashMap<K, W>::new,
                 (map, entry) -> map.put(entry.getKey(), transform.apply(entry.getValue())),
                 Map::putAll);
     }
