@@ -12,7 +12,7 @@ import java.util.function.Function;
  * You can use a Promise like an asynchronous callback or you can block
  * on it like you would a Future. Callbacks are executed:
  * 1. In the thread that sets the promise, if it wasn't satisfied when
- *    the callback was added.
+ * the callback was added.
  * 2. In the caller thread, if it was satisfied when the callback is added.
  * You should never block in the callback. If you need to do more work that does
  * block you should again use a Promise and flatMap.
@@ -68,10 +68,10 @@ public class Promise<T> implements SettableFuture<T> {
      */
     private Throwable throwable;
 
-	/**
-	 * Successful
-	 */
-	private volatile boolean successful = false;
+    /**
+     * Successful
+     */
+    private volatile boolean successful = false;
 
     /**
      * Satisfy the Promise with a successful value. This executes all the Consumers associated
@@ -80,15 +80,17 @@ public class Promise<T> implements SettableFuture<T> {
      */
     public void set(T value) {
         if (set.tryAcquire()) {
-	        successful = true;
-            this.value = value;
-            read.countDown();
-            Consumer<T> localSuccess = null;
+            Consumer<T> localSuccess;
             synchronized (this) {
+                successful = true;
+                this.value = value;
                 if (success != null) {
                     localSuccess = success;
                     success = null;
+                } else {
+                    localSuccess = null;
                 }
+                read.countDown();
             }
             if (localSuccess != null) {
                 localSuccess.accept(value);
@@ -246,9 +248,9 @@ public class Promise<T> implements SettableFuture<T> {
      * underlying Promise fails, the return promise fails.
      */
     public <V> Promise<V> map(Function<T, V> mapper) {
-        Promise<V> promise = new Promise<V>();
+        Promise<V> promise = new Promise<>();
         promise.link(this);
-        addSuccess(v -> { promise.set(mapper.apply(v)); });
+        addSuccess(v -> promise.set(mapper.apply(v)));
         addFailure(promise::setException);
         return promise;
     }
@@ -260,13 +262,13 @@ public class Promise<T> implements SettableFuture<T> {
      * return Promise fails.
      */
     public <V> Promise<V> flatMap(Function<T, Promise<V>> mapper) {
-        Promise<V> promise = new Promise<V>();
+        Promise<V> promise = new Promise<>();
         promise.link(this);
         addSuccess(value -> {
-           Promise <V> mapped = mapper.apply(value);
-           promise.link(mapped);
-           mapped.addSuccess(promise::set);
-           mapped.addFailure(promise::setException);
+            Promise<V> mapped = mapper.apply(value);
+            promise.link(mapped);
+            mapped.addSuccess(promise::set);
+            mapped.addFailure(promise::setException);
         });
         addFailure(promise::setException);
         return promise;
@@ -277,6 +279,7 @@ public class Promise<T> implements SettableFuture<T> {
      * The returned Promise succeeds if both the Promises succeed. If either Promise fails
      * the returned Promise also fails.
      */
+    @SuppressWarnings("unchecked")
     public <B> Promise<Pair<T, B>> join(Promise<B> promiseB) {
         Promise<Pair<T, B>> promise = new Promise<>();
         promise.link(this);
