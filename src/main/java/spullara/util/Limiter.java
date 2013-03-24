@@ -5,15 +5,15 @@ import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import java.util.stream.Streams;
 
 import static java.util.Spliterators.spliteratorUnknownSize;
+import static java.util.stream.Streams.stream;
 
 public class Limiter {
 
     public static <T> Stream<T> limit(Stream<T> s, Predicate<T> limit) {
         Iterator<T> iterator = s.sequential().iterator();
-        Iterator<T> iterator2 = new Iterator<T>() {
+        Iterator<T> limitedIterator = new Iterator<T>() {
             T next = null;
 
             @Override
@@ -35,12 +35,12 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return Streams.stream(spliteratorUnknownSize(iterator2, Spliterator.ORDERED | Spliterator.NONNULL));
+        return stream(spliteratorUnknownSize(limitedIterator, Spliterator.ORDERED | Spliterator.NONNULL));
     }
 
     public static <T> Stream<T> substream(Stream<T> s, Predicate<T> skip) {
         Iterator<T> iterator = s.sequential().iterator();
-        Iterator<T> iterator2 = new Iterator<T>() {
+        Iterator<T> substreamIterator = new Iterator<T>() {
             T next = null;
 
             @Override
@@ -68,12 +68,12 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return Streams.stream(spliteratorUnknownSize(iterator2, Spliterator.ORDERED | Spliterator.NONNULL));
+        return stream(spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL));
     }
 
     public static <T> Stream<T> substream(Stream<T> s, Predicate<T> skip, Predicate<T> limit) {
         Iterator<T> iterator = s.sequential().iterator();
-        Iterator<T> iterator2 = new Iterator<T>() {
+        Iterator<T> substreamIterator = new Iterator<T>() {
             boolean skipped = false;
             T next = null;
 
@@ -107,6 +107,6 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return Streams.stream(spliteratorUnknownSize(iterator2, Spliterator.ORDERED | Spliterator.NONNULL));
+        return stream(spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL));
     }
 }
