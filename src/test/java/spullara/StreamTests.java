@@ -3,17 +3,16 @@ package spullara;
 import org.junit.Test;
 
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Streams;
 
 import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.groupingBy;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
-import static spullara.util.Gater.gate;
-import static spullara.util.Gater.gated;
+import static spullara.util.Limiter.limit;
+import static spullara.util.Limiter.substream;
 
 /**
  * TODO: Edit this
@@ -130,17 +129,23 @@ public class StreamTests {
                 Map::putAll);
     }
 
+    List<Integer> intStream = Streams.intRange(1, 100).boxed().collect(toList());
+
     @Test
     public void testGater() {
-        Collector<String, List<String>> collector = toList();
-        gated(() -> {
-            Streams.intRange(1, 100000).boxed().parallel()
-                    .peek(System.out::println)
-                    .filter(gate(t -> t < 4))
-                    .map(t -> "Num: " + t)
-                    .collect(collector);
-        });
-        BiFunction<List<String>, String, List<String>> accumulator = collector.accumulator();
-        System.out.println(accumulator.apply(new ArrayList<String>(), ""));
+        List<String> list = substream(limit(intStream.stream()
+                .peek(System.out::println)
+                , t -> t < 11)
+                , t -> t < 8)
+                .map(t -> "Num: " + t)
+                .collect(toList());
+        assertEquals(Arrays.asList("Num: 8", "Num: 9", "Num: 10"), list);
+        list = substream(intStream.stream()
+                .peek(System.out::println)
+                , t -> t < 8
+                , t -> t < 11)
+                .map(t -> "Num: " + t)
+                .collect(toList());
+        assertEquals(Arrays.asList("Num: 8", "Num: 9", "Num: 10"), list);
     }
 }
