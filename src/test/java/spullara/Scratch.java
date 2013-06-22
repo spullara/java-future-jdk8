@@ -4,14 +4,15 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Streams;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toMap;
 
 public class Scratch {
 
@@ -46,6 +47,15 @@ public class Scratch {
                 .mapToInt(u -> u);
 
     }
+
+    @Test
+    public void testConvert() {
+        Set<Property> properties = new HashSet<>();
+        properties.add(new Property("a", "1"));
+        properties.add(new Property("b", "2"));
+        HashMap<String, Property> map = properties.stream().collect(HashMap::new, (m, p) -> m.put(p.name, p), Map::putAll);
+        Map<String, List<Property>> collect = properties.stream().collect(groupingBy(p -> p.name));
+    }
 }
 
 class TestJ8 {
@@ -75,4 +85,36 @@ class TestJ8 {
 
     }
 
+}
+
+class Property
+{
+    public String name;
+    public Object value;
+
+    public Property(String name, String value) {
+        this.name = name;
+        this.value = value;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass())
+        {
+            return false;
+        }
+
+        Property another = (Property) obj;
+        return name.equals(another.name);
+    }
+    @Override
+    public int hashCode()
+    {
+        return name.hashCode();
+    }
 }

@@ -196,7 +196,7 @@ public class PromisesTest {
         run.run();
     }
 
-    @Test
+//    @Test
     public void testCompletableFuture() throws Exception {
         Benchmarker bm = new Benchmarker(100000);
         Semaphore s = new Semaphore(1);
@@ -227,7 +227,7 @@ public class PromisesTest {
 
         bm.execute("Pure completable", () -> {
             s.acquireUninterruptibly();
-            CompletableFuture<Object> objectCompletableFuture = new CompletableFuture<>();
+            CompletableFuture<String> objectCompletableFuture = new CompletableFuture<>();
             objectCompletableFuture.thenAccept(t -> s.release());
             objectCompletableFuture.complete("Done");
         });
