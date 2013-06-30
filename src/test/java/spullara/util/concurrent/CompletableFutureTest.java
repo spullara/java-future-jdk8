@@ -25,11 +25,8 @@ public class CompletableFutureTest {
         System.out.println("Success.");
     }
 
-    private static ExecutorService es;
-
     @BeforeClass
     public static void setup() {
-        es = ForkJoinPool.commonPool();
     }
 
     @Test
@@ -104,21 +101,22 @@ public class CompletableFutureTest {
         assertEquals("Failed", result10.get());
 
         try {
-            onFailure(future3.acceptEither(future4, e -> {}), e -> {
+            onFailure(future3.acceptEither(future4, e -> {
+            }), e -> {
                 result1.complete(e.getMessage());
             }).get();
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
 
-        final CountDownLatch monitor = new CountDownLatch(2);
-        CompletableFuture<String> onraise = supplyAsync(() -> {
-            try {
-                monitor.await();
-            } catch (InterruptedException e) {
-            }
-            return "Interrupted";
-        });
+//        final CountDownLatch monitor = new CountDownLatch(2);
+//        CompletableFuture<String> onraise = supplyAsync(() -> {
+//            try {
+//                monitor.await();
+//            } catch (InterruptedException e) {
+//            }
+//            return "Interrupted";
+//        });
 //        CompletableFuture<String> join = future2.thenCombine(onraise, (a, b) -> null);
 //        onraise.onRaise(e -> monitor.countDown());
 //        onraise.onRaise(e -> monitor.countDown());
@@ -137,20 +135,22 @@ public class CompletableFutureTest {
         } catch (ExecutionException ee) {
         }
 
-        assertEquals("Flatmapped: Constant", future1.thenApply(v -> future2).thenApply(v -> "Flatmapped: " + v).get());
+        assertEquals("Flatmapped: Constant", future1.thenCompose(v -> future2).thenApply(v -> "Flatmapped: " + v).get());
 
         CompletableFuture<String> result11 = new CompletableFuture<>();
         try {
-            onFailure(future1.thenApply(v -> future3), e -> { result11.complete("Failed"); }).get();
+            onFailure(future1.thenApply(v -> future3), e -> {
+                result11.complete("Failed");
+            }).get();
         } catch (ExecutionException ee) {
             assertEquals("Failed", result11.get());
         }
 
         CompletableFuture<String> result2 = new CompletableFuture<>();
-        onFailure(future3.thenApply(v -> future1), e -> {
+        onFailure(future3.thenCompose(v -> future1), e -> {
             result2.complete("Flat map failed: " + e);
         });
-        assertEquals("Flat map failed: java.lang.RuntimeException: CompletableFuture4", result2.get());
+        assertEquals("Flat map failed: java.util.concurrent.CompletionException: java.lang.RuntimeException: CompletableFuture4", result2.get());
 
         assertEquals("Done.", future.get(1, TimeUnit.DAYS));
 
@@ -168,20 +168,18 @@ public class CompletableFutureTest {
 
         CompletableFuture<String> result5 = new CompletableFuture<>();
         CompletableFuture<String> result6 = new CompletableFuture<>();
-        onFailure(future.thenAccept(s -> result5.complete("onSuccess: " + s))
-                , e -> { result5.complete("onFailure: " + e); })
+        onFailure(future.thenAccept(s -> result5.complete("onSuccess: " + s)),
+                e -> result5.complete("onFailure: " + e))
                 .thenRun(() -> result6.complete("Ensured"));
         assertEquals("onSuccess: Done.", result5.get());
         assertEquals("Ensured", result6.get());
 
         CompletableFuture<String> result7 = new CompletableFuture<>();
         CompletableFuture<String> result8 = new CompletableFuture<>();
-        onFailure(future3.thenAccept(s -> result7.complete("onSuccess: " + s))
-                , e -> {
-                    result7.complete("onFailure: " + e);
-                })
-                .thenRun(() -> result8.complete("Ensured"));
-        assertEquals("onFailure: java.lang.RuntimeException: CompletableFuture4", result7.get());
+        ensure(onFailure(future3.thenAccept(s -> result7.complete("onSuccess: " + s)), e -> {
+            result7.complete("onFailure: " + e);
+        }), () -> result8.complete("Ensured"));
+        assertEquals("onFailure: java.util.concurrent.CompletionException: java.lang.RuntimeException: CompletableFuture4", result7.get());
         assertEquals("Ensured", result8.get());
 
         assertEquals("Was Rescued!", future3.exceptionally(e -> "Rescued!").thenApply(v -> "Was " + v).get());
@@ -198,26 +196,28 @@ public class CompletableFutureTest {
         CompletableFuture<String> result9 = new CompletableFuture<>();
         future.thenAccept(v -> result9.complete("onSuccess: " + v));
         assertEquals("onSuccess: Done.", result9.get());
-
-        es.shutdown();
     }
 
     private CompletableFuture<List<String>> collect(List<CompletableFuture<String>> completableFutures) {
         CompletableFuture<List<String>> result = new CompletableFuture<>();
         int size = completableFutures.size();
         List<String> list = new ArrayList<>();
-        for (CompletableFuture<String> completableFuture : completableFutures) {
-            completableFuture.handle((s, t) -> {
-                if (t == null) {
-                    list.add(s);
-                    if (list.size() == size) {
-                        result.complete(list);
+        if (size == 0) {
+            result.complete(list);
+        } else {
+            for (CompletableFuture<String> completableFuture : completableFutures) {
+                completableFuture.handle((s, t) -> {
+                    if (t == null) {
+                        list.add(s);
+                        if (list.size() == size) {
+                            result.complete(list);
+                        }
+                    } else {
+                        result.completeExceptionally(t);
                     }
-                } else {
-                    result.completeExceptionally(t);
-                }
-                return s;
-            });
+                    return s;
+                });
+            }
         }
         return result;
     }
@@ -225,17 +225,31 @@ public class CompletableFutureTest {
     private static <T> CompletableFuture<T> onFailure(CompletableFuture<T> future, Consumer<Throwable> call) {
         CompletableFuture<T> completableFuture = new CompletableFuture<>();
         future.handle((v, t) -> {
-           if (t == null) {
-               completableFuture.complete(v);
-           } else {
-               call.accept(t);
-               completableFuture.completeExceptionally(t);
-           }
-           return null;
+            if (t == null) {
+                completableFuture.complete(v);
+            } else {
+                call.accept(t);
+                completableFuture.completeExceptionally(t);
+            }
+            return null;
         });
         return completableFuture;
     }
 
+    private static <T> CompletableFuture<T> ensure(CompletableFuture<T> future, Runnable call) {
+        CompletableFuture<T> completableFuture = new CompletableFuture<>();
+        future.handle((v, t) -> {
+            if (t == null) {
+                call.run();
+                completableFuture.complete(v);
+            } else {
+                call.run();
+                completableFuture.completeExceptionally(t);
+            }
+            return null;
+        });
+        return completableFuture;
+    }
 
     @SafeVarargs
     private final CompletableFuture<String> select(CompletableFuture<String>... completableFutures) {
