@@ -8,9 +8,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamBuilder;
 import java.util.stream.Streams;
 
 public class Scratch {
@@ -29,10 +30,12 @@ public class Scratch {
 
 
         List<String> ss = new ArrayList<>();
-        ss.stream().flatMap((String x, Consumer<String> sink) -> {
+        ss.stream().flatMap(x -> {
+            StreamBuilder<String> builder = Stream.builder();
             for (String s : x.split(",")) {
-                sink.accept(s);
+                builder.add(s);
             }
+            return builder.build();
         });
     }
 
@@ -40,8 +43,8 @@ public class Scratch {
     public static void testStreams() {
 
         IntStream map = Streams.zip(
-                Streams.intRange(0, 100).boxed(),
-                Streams.intRange(0, 100).boxed(),
+                IntStream.range(0, 100).boxed(),
+                IntStream.range(0, 100).boxed(),
                 Math::multiplyExact)
                 .mapToInt(u -> u);
 

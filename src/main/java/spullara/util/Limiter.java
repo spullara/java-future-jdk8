@@ -7,7 +7,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.Spliterators.spliteratorUnknownSize;
-import static java.util.stream.Streams.stream;
+import static java.util.stream.StreamSupport.stream;
 
 public class Limiter {
 
