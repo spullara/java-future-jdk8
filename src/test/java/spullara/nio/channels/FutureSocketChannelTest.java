@@ -15,8 +15,7 @@ public class FutureSocketChannelTest {
     public void testEchoServer() throws Exception {
         final AtomicReference<String> result = new AtomicReference<>();
         final CountDownLatch latch = new CountDownLatch(1);
-        SocketAddress serverSocket = new InetSocketAddress(8000);
-        SocketAddress clientSocket = new InetSocketAddress("localhost", 8000);
+        SocketAddress serverSocket = new InetSocketAddress(0);
         final FutureServerSocketChannel fssc = new FutureServerSocketChannel().bind(serverSocket);
         Consumer<FutureSocketChannel> accepted = new Consumer<FutureSocketChannel>() {
             public void accept(FutureSocketChannel fsc) {
@@ -31,6 +30,7 @@ public class FutureSocketChannelTest {
         };
         fssc.accept().onSuccess(accepted);
         FutureSocketChannel fsc = new FutureSocketChannel();
+        SocketAddress clientSocket = new InetSocketAddress("localhost", fssc.getLocalAddress().getPort());
         fsc.connect(clientSocket).onSuccess(v -> {
             fsc.write(ByteBuffer.wrap("hello".getBytes())).onSuccess(sent -> {
                 ByteBuffer readBuffer = ByteBuffer.allocate(sent);

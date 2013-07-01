@@ -3,6 +3,7 @@ package spullara.nio.channels;
 import spullara.util.concurrent.Promise;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
@@ -36,5 +37,9 @@ public class FutureServerSocketChannel {
             }
         });
         return acceptor;
+    }
+
+    public InetSocketAddress getLocalAddress() throws IOException {
+        return (InetSocketAddress) assc.getLocalAddress();
     }
 }

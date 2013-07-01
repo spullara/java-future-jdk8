@@ -4,7 +4,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import spullara.util.Benchmarker;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -14,9 +13,7 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static spullara.util.concurrent.Promises.collect;
-import static spullara.util.concurrent.Promises.execute;
-import static spullara.util.concurrent.Promises.select;
+import static spullara.util.concurrent.Promise.*;
 
 public class PromisesTest {
 
@@ -177,10 +174,10 @@ public class PromisesTest {
         assertEquals("Was Rescued!", promise4.rescue(e -> "Rescued!").map(v -> "Was " + v).get());
         assertEquals("Was Constant", promise3.rescue(e -> "Rescued!").map(v -> "Was " + v).get());
 
-        assertEquals(asList("Done.", "Done2.", "Constant"), collect(asList(promise, promise2, promise3)).get());
-        assertEquals(Arrays.<String>asList(), collect(new ArrayList<Promise<String>>()).get());
+        assertEquals(asList("Done.", "Done2.", "Constant"), collect(promise, promise2, promise3).get());
+        assertEquals(Arrays.asList(), collect().get());
         try {
-            assertEquals(asList("Done.", "Done2.", "Constant"), collect(asList(promise, promise4, promise3)).get());
+            assertEquals(asList("Done.", "Done2.", "Constant"), collect(promise, promise4, promise3).get());
             fail("Didn't fail");
         } catch (ExecutionException ee) {
         }
@@ -198,7 +195,7 @@ public class PromisesTest {
 
     @Test
     public void testCompletableFuture() throws Exception {
-        Benchmarker bm = new Benchmarker(100000);
+        Benchmarker bm = new Benchmarker(10000);
         Semaphore s = new Semaphore(1);
 
         bm.execute("No futures or lambdas", () -> {
@@ -233,13 +230,13 @@ public class PromisesTest {
         });
 
         bm.execute("Acquire after promise", () -> {
-            Promise<String> promise = Promises.execute(es, () -> "Test");
+            Promise<String> promise = Promise.execute(es, () -> "Test");
             s.acquireUninterruptibly();
             promise.onSuccess(t -> s.release());
         });
 
         bm.execute("Acquire after promise async", () -> {
-            Promise<String> promise = Promises.execute(es, () -> "Test");
+            Promise<String> promise = Promise.execute(es, () -> "Test");
             s.acquireUninterruptibly();
             promise.onSuccess(t -> es.submit(s::release));
         });

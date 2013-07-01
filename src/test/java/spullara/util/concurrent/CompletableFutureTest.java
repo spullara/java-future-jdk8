@@ -13,7 +13,6 @@ import java.util.function.Consumer;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CompletableFutureTest {
@@ -27,6 +26,116 @@ public class CompletableFutureTest {
 
     @BeforeClass
     public static void setup() {
+    }
+
+    @Test
+    public void testExceptions() {
+
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        future.completeExceptionally(new RuntimeException());
+        future.exceptionally(t -> {
+            t.printStackTrace();
+            throw new CompletionException(t);
+        });
+
+        CompletableFuture<Object> future2 = supplyAsync(() -> {
+            throw new RuntimeException();
+        });
+        future2.exceptionally(t -> {
+            t.printStackTrace();
+            throw new CompletionException(t);
+        });
+
+        CompletableFuture<String> future3 = supplyAsync(() -> "test");
+        future3.thenAccept(t -> {
+            throw new RuntimeException();
+        }).exceptionally(t -> {
+            t.printStackTrace();
+            throw new CompletionException(t);
+        });
+    }
+
+    @Test
+    public void testCancellation() throws ExecutionException, InterruptedException {
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicBoolean handled = new AtomicBoolean();
+        AtomicBoolean handleCalledWithValue = new AtomicBoolean();
+        CompletableFuture<String> other = supplyAsync(() -> "Doomed value");
+        CompletableFuture<String> future = supplyAsync(() -> {
+            sleep(1000);
+            return "Doomed value";
+        }).exceptionally(t -> {
+            cancelled.set(true);
+            return null;
+        }).thenCombine(other, (a, b) -> a + ", " + b).handle((v, t) -> {
+            if (t == null) {
+                handleCalledWithValue.set(true);
+            }
+            handled.set(true);
+            return null;
+        });
+        sleep(100);
+        future.cancel(true);
+        sleep(1000);
+        try {
+            future.get();
+            fail("Should have thrown");
+        } catch (CancellationException ce) {
+            System.out.println("future cancelled: " + future.isCancelled());
+            System.out.println("other cancelled: " + other.isCancelled());
+            System.out.println("exceptionally called: " + cancelled.get());
+            System.out.println("handle called: " + handled.get());
+            System.out.println("handle called with value: " + handleCalledWithValue.get());
+        }
+    }
+
+    @Test
+    public void testCompleteExceptionally() throws ExecutionException, InterruptedException {
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicBoolean handled = new AtomicBoolean();
+        AtomicBoolean handleCalledWithValue = new AtomicBoolean();
+        CompletableFuture<String> other = supplyAsync(() -> "Doomed value");
+        CompletableFuture<String> future = supplyAsync(() -> {
+            sleep(1000);
+            return "Doomed value";
+        }).exceptionally(t -> {
+            cancelled.set(true);
+            return null;
+        }).thenCombine(other, (a, b) -> a + ", " + b).handle((v, t) -> {
+            if (t == null) {
+                handleCalledWithValue.set(true);
+            }
+            handled.set(true);
+            return null;
+        });
+        sleep(100);
+        future.completeExceptionally(new CancellationException());
+        sleep(1000);
+        try {
+            future.get();
+            fail("Should have thrown");
+        } catch (CancellationException ce) {
+            System.out.println("future cancelled: " + future.isCancelled());
+            System.out.println("other cancelled: " + other.isCancelled());
+            System.out.println("exceptionally called: " + cancelled.get());
+            System.out.println("handle called: " + handled.get());
+            System.out.println("handle called with value: " + handleCalledWithValue.get());
+        }
+    }
+
+    @Test
+    public void testExceptionally() {
+        AtomicBoolean called = new AtomicBoolean();
+        CompletableFuture<Object> future = new CompletableFuture<>().exceptionally(t -> {
+            called.set(true);
+            return null;
+        });
+        future.completeExceptionally(new CancellationException());
+        try {
+            future.get();
+        } catch (Exception e) {
+            System.out.println("exceptionally called: " + called);
+        }
     }
 
     @Test
@@ -57,8 +166,8 @@ public class CompletableFutureTest {
         CompletableFuture<String> selected = select(future, future1, future3, future4);
 
         try {
-            assertTrue(future5.isCancelled());
-            assertTrue(future5.isDone());
+            junit.framework.Assert.assertTrue(future5.isCancelled());
+            junit.framework.Assert.assertTrue(future5.isDone());
             future5.get();
             fail("Was not cancelled");
         } catch (CancellationException ce) {
