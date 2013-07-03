@@ -4,11 +4,10 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Streams;
+import java.util.stream.IntStream;
 
 import static java.lang.Integer.parseInt;
 import static java.util.stream.Collectors.*;
-import static java.util.stream.Collectors.groupingBy;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static spullara.util.Limiter.limit;
@@ -129,7 +128,7 @@ public class StreamTests {
                 Map::putAll);
     }
 
-    List<Integer> intStream = Streams.intRange(1, 100).boxed().collect(toList());
+    List<Integer> intStream = IntStream.range(1, 100).boxed().collect(toList());
 
     @Test
     public void testGater() {

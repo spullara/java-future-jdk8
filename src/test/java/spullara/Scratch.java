@@ -1,18 +1,13 @@
 package spullara;
 
-import org.junit.Test;
-
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Streams;
+import java.util.stream.Stream;
+import java.util.stream.StreamBuilder;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toMap;
 
 public class Scratch {
 
@@ -30,25 +25,16 @@ public class Scratch {
 
 
         List<String> ss = new ArrayList<>();
-        ss.stream().flatMap((String x, Consumer<String> sink) -> {
+        ss.stream().flatMap(x -> {
+            StreamBuilder<String> builder = Stream.builder();
             for (String s : x.split(",")) {
-                sink.accept(s);
+                builder.add(s);
             }
+            return builder.build();
         });
     }
 
-    @Test
-    public static void testStreams() {
 
-        IntStream map = Streams.zip(
-                Streams.intRange(0, 100).boxed(),
-                Streams.intRange(0, 100).boxed(),
-                Math::multiplyExact)
-                .mapToInt(u -> u);
-
-    }
-
-    @Test
     public void testConvert() {
         Set<Property> properties = new HashSet<>();
         properties.add(new Property("a", "1"));

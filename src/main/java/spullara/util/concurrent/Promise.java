@@ -1,9 +1,9 @@
 package spullara.util.concurrent;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -72,6 +72,74 @@ public class Promise<T> implements SettableFuture<T> {
      * Successful
      */
     private volatile boolean successful = false;
+
+    public static <T> Promise<T> execute(ExecutorService es, Callable<T> callable) {
+        Promise<T> promise = new Promise<>();
+        es.submit(() -> {
+            try {
+                if (!promise.isCancelled()) {
+                    promise.set(callable.call());
+                }
+            } catch (Throwable th) {
+                promise.setException(th);
+            }
+        });
+        return promise;
+    }
+
+    public static <T> Promise<T> execute(Callable<T> callable) {
+        Promise<T> promise = new Promise<>();
+        ForkJoinPool.commonPool().submit(() -> {
+            try {
+                if (!promise.isCancelled()) {
+                    promise.set(callable.call());
+                }
+            } catch (Throwable th) {
+                promise.setException(th);
+            }
+        });
+        return promise;
+    }
+
+    @SafeVarargs
+    public static <T> Promise<? extends List<T>> collect(Promise<T>... promises) {
+        Promise<List<T>> promiseOfList = new Promise<>();
+        int size = promises.length;
+        if (size == 0) {
+            promiseOfList.set(Collections.emptyList());
+        } else {
+            List<T> list = Collections.synchronizedList(new ArrayList<>(size));
+            for (Promise<T> promise : promises) {
+                promise.onSuccess(v -> {
+                    list.add(v);
+                    if (list.size() == size) {
+                        promiseOfList.set(list);
+                    }
+                }).onFailure(promiseOfList::setException);
+            }
+        }
+        return promiseOfList;
+    }
+
+    @SafeVarargs
+    public static <T> Promise<T> select(Promise<T>... promises) {
+        AtomicInteger ai = new AtomicInteger(promises.length);
+        AtomicBoolean done = new AtomicBoolean();
+        Promise<T> promise = new Promise<>();
+        for (Promise<T> p : promises) {
+            p.onSuccess(t -> {
+                if (done.compareAndSet(false, true)) {
+                    promise.set(t);
+                }
+            });
+            p.onFailure(th -> {
+                if (ai.decrementAndGet() == 0) {
+                    promise.setException(th);
+                }
+            });
+        }
+        return promise;
+    }
 
     /**
      * Satisfy the Promise with a successful value. This executes all the Consumers associated
