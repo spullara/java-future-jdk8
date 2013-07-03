@@ -6,6 +6,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.Assert.assertEquals;
+import static spullara.util.Lazy.lazy;
 
 public class LazyTest {
 
@@ -14,7 +15,7 @@ public class LazyTest {
     @Test
     public void testLazy() {
         AtomicInteger ai = new AtomicInteger(0);
-        Lazy<String> lazyString = new Lazy<>(() -> "Value: " + ai.incrementAndGet());
+        Lazy<String> lazyString = lazy(() -> "Value: " + ai.incrementAndGet());
         assertEquals(0, ai.get());
         assertEquals("Value: 1", lazyString.get());
         assertEquals(2, ai.incrementAndGet());
@@ -25,7 +26,7 @@ public class LazyTest {
     public void testThreadedLazy() throws InterruptedException, ExecutionException {
         AtomicInteger executions = new AtomicInteger(0);
         AtomicInteger attempts = new AtomicInteger(0);
-        Lazy<String> lazyString = new Lazy<>(() -> "Value: " + executions.incrementAndGet());
+        Lazy<String> lazyString = lazy(() -> "Value: " + executions.incrementAndGet());
         CyclicBarrier cyclicBarrier = new CyclicBarrier(NUM);
         ExecutorService es = Executors.newCachedThreadPool();
         for (int i = 0; i < NUM; i++) {

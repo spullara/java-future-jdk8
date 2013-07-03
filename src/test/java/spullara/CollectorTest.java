@@ -3,6 +3,8 @@ package spullara;
 import org.junit.Test;
 
 import java.util.*;
+import java.util.function.IntFunction;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -33,7 +35,7 @@ public class CollectorTest {
 
         // Find highest-paid employee
         Optional<Employee> highestPaid = employees.stream()
-                .collect(Collectors.maxBy(Comparator.comparing(Employee::getSalary)));
+                .collect(Collectors.maxBy(Comparator.comparing((ToIntFunction<? super Employee>) Employee::getSalary)));
 
         // Group employees by department
         Map<Department, List<Employee>> byDept
@@ -43,7 +45,7 @@ public class CollectorTest {
         // Find highest-paid employee by department
         Map<Department, Optional<Employee>> highestPaidByDept
                 = employees.stream().collect(Collectors.groupingBy(Employee::getDepartment,
-                        Collectors.maxBy(Comparator.comparing(Employee::getSalary))));
+                        Collectors.maxBy(Comparator.comparing((ToIntFunction<? super Employee>) Employee::getSalary))));
 
         // Partition students into passing and failing
         Map<Boolean, List<Student>> passingFailing =

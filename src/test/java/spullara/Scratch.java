@@ -1,5 +1,7 @@
 package spullara;
 
+import org.junit.Test;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -35,6 +37,7 @@ public class Scratch {
     }
 
 
+    @Test
     public void testConvert() {
         Set<Property> properties = new HashSet<>();
         properties.add(new Property("a", "1"));
@@ -73,8 +76,7 @@ class TestJ8 {
 
 }
 
-class Property
-{
+class Property {
     public String name;
     public Object value;
 
@@ -84,23 +86,20 @@ class Property
     }
 
     @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj)
-        {
+    public boolean equals(Object obj) {
+        if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass())
-        {
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
 
         Property another = (Property) obj;
         return name.equals(another.name);
     }
+
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return name.hashCode();
     }
 }

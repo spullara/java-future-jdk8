@@ -21,7 +21,11 @@ public class Lazy<T> {
     private final Callable<T> callable;
     private T value;
 
-    public Lazy(Callable<T> callable) {
+    public static <T> Lazy<T> lazy(Callable<T> callable) {
+        return new Lazy<T>(callable);
+    }
+
+    private Lazy(Callable<T> callable) {
         this.callable = callable;
     }
 

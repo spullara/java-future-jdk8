@@ -4,10 +4,12 @@ import org.junit.Test;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.lang.Integer.parseInt;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
 import static spullara.util.Limiter.limit;
@@ -117,8 +119,7 @@ public class StreamTests {
         // groupBy region and gender, summing total sales
         Map<String, Map<String, DoubleSummaryStatistics>> pivot = rows.stream().collect(
                 groupingBy(r -> r.region,
-                        groupingBy(r -> r.gender,
-                                toDoubleSummaryStatistics(r -> r.price * r.units))));
+                        groupingBy(r -> r.gender, Collectors.summarizingDouble(r -> r.price * r.units))));
         System.out.println(pivot);
     }
 
