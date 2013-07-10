@@ -66,6 +66,7 @@ public class MatchTest {
     }
 
     String s(String s) {
-        return (s.trim() == null || s.equals("")) ? "" : " " + s.trim();
+        s = s == null ? null : s.trim();
+        return (s == null || s.equals("")) ? "" : " " + s;
     }
 }

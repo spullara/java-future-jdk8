@@ -3,11 +3,11 @@ package spullara.util;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
 
 public class Limiter {
@@ -36,7 +36,7 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return stream(spliteratorUnknownSize(limitedIterator, Spliterator.ORDERED | Spliterator.NONNULL));
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(limitedIterator, Spliterator.ORDERED | Spliterator.NONNULL), false);
     }
 
     public static <T> Stream<T> substream(Stream<T> s, Predicate<T> skip) {
@@ -69,7 +69,7 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return stream(spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL));
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL), false);
     }
 
     public static <T> Stream<T> substream(Stream<T> s, Predicate<T> skip, Predicate<T> limit) {
@@ -108,6 +108,6 @@ public class Limiter {
                 throw new NoSuchElementException();
             }
         };
-        return stream(spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL));
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(substreamIterator, Spliterator.ORDERED | Spliterator.NONNULL), false);
     }
 }
