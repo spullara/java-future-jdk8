@@ -26,8 +26,11 @@ public class BenchmarkTest {
             ai.addAndGet(i);
         });
         System.out.println(ai);
-        bm.execute("stream", () -> {
+        bm.execute("sequential stream", () -> {
             ai.addAndGet((int) list.stream().filter(v -> v.endsWith("1")).count());
+        });
+        bm.execute("parallel stream", () -> {
+            ai.addAndGet((int) list.stream().parallel().filter(v -> v.endsWith("1")).count());
         });
         System.out.println(ai);
         bm.report();
