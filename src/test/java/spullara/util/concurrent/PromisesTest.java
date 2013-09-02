@@ -238,7 +238,7 @@ public class PromisesTest {
         bm.execute("Acquire after promise async", () -> {
             Promise<String> promise = Promise.execute(es, () -> "Test");
             s.acquireUninterruptibly();
-            promise.onSuccess(t -> es.submit(s::release));
+            promise.onSuccess(t -> es.submit(() -> s.release()));
         });
 
         bm.execute("Acquire after completable", () -> {

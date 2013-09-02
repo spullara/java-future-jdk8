@@ -286,7 +286,7 @@ public class Promise<T> implements SettableFuture<T> {
             } else if (success == null) {
                 success = block;
             } else {
-                success = success.chain(block);
+                success = success.andThen(block);
             }
         }
     }
@@ -305,7 +305,7 @@ public class Promise<T> implements SettableFuture<T> {
             } else if (failed == null) {
                 failed = block;
             } else {
-                failed = failed.chain(block);
+                failed = failed.andThen(block);
             }
         }
     }
@@ -461,7 +461,7 @@ public class Promise<T> implements SettableFuture<T> {
             if (raise == null) {
                 raise = block;
             } else {
-                raise = raise.chain(block);
+                raise = raise.andThen(block);
             }
         }
         return this;

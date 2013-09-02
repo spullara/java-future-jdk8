@@ -7,7 +7,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import java.util.stream.StreamBuilder;
 
 import static java.util.stream.Collectors.groupingBy;
 
@@ -28,7 +27,7 @@ public class Scratch {
 
         List<String> ss = new ArrayList<>();
         ss.stream().flatMap(x -> {
-            StreamBuilder<String> builder = Stream.builder();
+            Stream.Builder<String> builder = Stream.builder();
             for (String s : x.split(",")) {
                 builder.add(s);
             }
@@ -102,4 +101,12 @@ class Property {
     public int hashCode() {
         return name.hashCode();
     }
+}
+
+interface Action<T, E extends Throwable> {
+    T run() throws E;
+}
+
+interface ExceptionalFunction<T, R, E extends Throwable> {
+    R apply(T t) throws E;
 }
