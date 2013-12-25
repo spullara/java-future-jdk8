@@ -19,22 +19,22 @@ public class FutureSocketChannelTest {
         final FutureServerSocketChannel fssc = new FutureServerSocketChannel().bind(serverSocket);
         Consumer<FutureSocketChannel> accepted = new Consumer<FutureSocketChannel>() {
             public void accept(FutureSocketChannel fsc) {
-                fssc.accept().onSuccess(this);
+                fssc.accept().thenAccept(this);
                 ByteBuffer bb = ByteBuffer.allocate(1024);
-                fsc.read(bb).onSuccess(length -> {
+                fsc.read(bb).thenAccept(length -> {
                     bb.flip();
                     fsc.write(bb);
                     fsc.close();
                 });
             }
         };
-        fssc.accept().onSuccess(accepted);
+        fssc.accept().thenAccept(accepted);
         FutureSocketChannel fsc = new FutureSocketChannel();
         SocketAddress clientSocket = new InetSocketAddress("localhost", fssc.getLocalAddress().getPort());
-        fsc.connect(clientSocket).onSuccess(v -> {
-            fsc.write(ByteBuffer.wrap("hello".getBytes())).onSuccess(sent -> {
+        fsc.connect(clientSocket).thenAccept(v -> {
+            fsc.write(ByteBuffer.wrap("hello".getBytes())).thenAccept(sent -> {
                 ByteBuffer readBuffer = ByteBuffer.allocate(sent);
-                fsc.read(readBuffer).onSuccess(recv -> {
+                fsc.read(readBuffer).thenAccept(recv -> {
                     readBuffer.flip();
                     result.set(new String(readBuffer.array()));
                     latch.countDown();

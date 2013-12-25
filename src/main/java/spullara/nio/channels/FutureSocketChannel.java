@@ -1,13 +1,12 @@
 package spullara.nio.channels;
 
-import spullara.util.concurrent.Promise;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.concurrent.CompletableFuture;
 
 public class FutureSocketChannel {
 
@@ -29,43 +28,43 @@ public class FutureSocketChannel {
         }
     }
 
-    public Promise<Void> connect(SocketAddress sa) {
-        Promise<Void> connector = new Promise<>();
-        asc.connect(sa, connector, new CompletionHandler<Void, Promise<Void>>() {
-            public void completed(Void v1, Promise<Void> connector) {
-                connector.set(null);
+    public CompletableFuture<Void> connect(SocketAddress sa) {
+        CompletableFuture<Void> connector = new CompletableFuture<>();
+        asc.connect(sa, connector, new CompletionHandler<Void, CompletableFuture<Void>>() {
+            public void completed(Void v1, CompletableFuture<Void> connector) {
+                connector.complete(null);
             }
 
-            public void failed(Throwable th, Promise<Void> connector) {
-                connector.setException(th);
+            public void failed(Throwable th, CompletableFuture<Void> connector) {
+                connector.completeExceptionally(th);
             }
         });
         return connector;
     }
 
-    public Promise<Integer> read(ByteBuffer buffer) {
-        Promise<Integer> reader = new Promise<>();
-        asc.read(buffer, reader, new CompletionHandler<Integer, Promise<Integer>>() {
-            public void completed(Integer length, Promise<Integer> reader) {
-                reader.set(length);
+    public CompletableFuture<Integer> read(ByteBuffer buffer) {
+        CompletableFuture<Integer> reader = new CompletableFuture<>();
+        asc.read(buffer, reader, new CompletionHandler<Integer, CompletableFuture<Integer>>() {
+            public void completed(Integer length, CompletableFuture<Integer> reader) {
+                reader.complete(length);
             }
 
-            public void failed(Throwable th, Promise<Integer> reader) {
-                reader.setException(th);
+            public void failed(Throwable th, CompletableFuture<Integer> reader) {
+                reader.completeExceptionally(th);
             }
         });
         return reader;
     }
 
-    public Promise<Integer> write(ByteBuffer buffer) {
-        Promise<Integer> writer = new Promise<>();
-        asc.write(buffer, writer, new CompletionHandler<Integer, Promise<Integer>>() {
-            public void completed(Integer length, Promise<Integer> writer) {
-                writer.set(length);
+    public CompletableFuture<Integer> write(ByteBuffer buffer) {
+        CompletableFuture<Integer> writer = new CompletableFuture<>();
+        asc.write(buffer, writer, new CompletionHandler<Integer, CompletableFuture<Integer>>() {
+            public void completed(Integer length, CompletableFuture<Integer> writer) {
+                writer.complete(length);
             }
 
-            public void failed(Throwable th, Promise<Integer> writer) {
-                writer.setException(th);
+            public void failed(Throwable th, CompletableFuture<Integer> writer) {
+                writer.completeExceptionally(th);
             }
         });
         return writer;

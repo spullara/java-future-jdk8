@@ -124,6 +124,43 @@ public class CompletableFutureTest {
     }
 
     @Test
+    public void testCompleteExceptionally2() throws ExecutionException, InterruptedException {
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicBoolean handled = new AtomicBoolean();
+        AtomicBoolean handleCalledWithValue = new AtomicBoolean();
+        CompletableFuture<String> other = supplyAsync(() -> "Doomed value");
+        CompletableFuture<String> future = supplyAsync(() -> {
+            sleep(1000);
+            return "Doomed value";
+        });
+        CompletableFuture<String> exceptionally = future.exceptionally(t -> {
+            cancelled.set(true);
+            return null;
+        });
+        CompletableFuture<String> scf = exceptionally.thenCombine(other, (a, b) -> a + ", " + b);
+        scf.handle((v, t) -> {
+            if (t == null) {
+                handleCalledWithValue.set(true);
+            }
+            handled.set(true);
+            return null;
+        });
+        sleep(100);
+        scf.cancel(true);
+        sleep(1000);
+        try {
+            scf.get();
+            fail("Should have thrown");
+        } catch (CancellationException ce) {
+            System.out.println("future cancelled: " + future.isCancelled());
+            System.out.println("other cancelled: " + other.isCancelled());
+            System.out.println("exceptionally called: " + cancelled.get());
+            System.out.println("handle called: " + handled.get());
+            System.out.println("handle called with value: " + handleCalledWithValue.get());
+        }
+    }
+
+    @Test
     public void testExceptionally() {
         AtomicBoolean called = new AtomicBoolean();
         CompletableFuture<Object> future = new CompletableFuture<>().exceptionally(t -> {

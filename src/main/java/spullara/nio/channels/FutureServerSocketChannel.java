@@ -1,13 +1,12 @@
 package spullara.nio.channels;
 
-import spullara.util.concurrent.Promise;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.concurrent.CompletableFuture;
 
 public class FutureServerSocketChannel {
 
@@ -25,15 +24,15 @@ public class FutureServerSocketChannel {
         return new FutureServerSocketChannel(assc.bind(sa));
     }
 
-    public Promise<FutureSocketChannel> accept() {
-        final Promise<FutureSocketChannel> acceptor = new Promise<>();
+    public CompletableFuture<FutureSocketChannel> accept() {
+        final CompletableFuture<FutureSocketChannel> acceptor = new CompletableFuture<>();
         assc.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
             public void completed(AsynchronousSocketChannel channel, Void v) {
-                acceptor.set(new FutureSocketChannel(channel));
+                acceptor.complete(new FutureSocketChannel(channel));
             }
 
             public void failed(Throwable th, Void v) {
-                acceptor.setException(th);
+                acceptor.completeExceptionally(th);
             }
         });
         return acceptor;

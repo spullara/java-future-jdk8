@@ -12,9 +12,7 @@ public class Match<T, V> {
     private Function<T, V> other;
 
     public static <T, V, W> Match<T, V> match(Extractor<T, W> e, Function<W, V> c) {
-        Match match = new Match();
-        match.or(e, c);
-        return match;
+        return new Match<T, V>().or(e, c);
     }
 
     public <W> Match<T, V> or(Extractor<T, W> e, Function<W, V> c) {

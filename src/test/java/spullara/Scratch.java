@@ -110,3 +110,11 @@ interface Action<T, E extends Throwable> {
 interface ExceptionalFunction<T, R, E extends Throwable> {
     R apply(T t) throws E;
 }
+
+@FunctionalInterface
+interface Action1Bug<E1> {
+    void act(E1 e1) throws Exception;
+
+    static Action1Bug none = (notUsed) -> {
+    };
+}
