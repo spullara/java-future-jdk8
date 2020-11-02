@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.CompletableFuture;
@@ -72,5 +73,13 @@ public class FutureSocketChannel {
 
     public int getPort() throws IOException {
         return ((InetSocketAddress)asc.getLocalAddress()).getPort();
+    }
+
+    public static FutureSocketChannel open() throws IOException {
+        return new FutureSocketChannel(AsynchronousSocketChannel.open());
+    }
+
+    public static FutureSocketChannel open(AsynchronousChannelGroup group) throws IOException {
+        return new FutureSocketChannel(AsynchronousSocketChannel.open(group));
     }
 }
