@@ -1,3 +1,5 @@
+(The code was migrated to CompletableFuture when it was introduced rather than the Promise class originally used)
+
 You can read about the theory of this code from the Twitter Scala School:
 
 http://twitter.github.com/scala_school/finagle.html
